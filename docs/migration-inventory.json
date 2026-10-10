@@ -1,0 +1,1258 @@
+{
+  "baseline": "a8ab111",
+  "moduleCount": 21,
+  "declarations": [
+    {
+      "module": "runtime/state",
+      "start": 1,
+      "names": [
+        "Version"
+      ]
+    },
+    {
+      "module": "runtime/state",
+      "start": 2,
+      "names": [
+        "config_JSON",
+        "缓存SOCKS5白名单",
+        "调试日志打印"
+      ]
+    },
+    {
+      "module": "runtime/state",
+      "start": 3,
+      "names": [
+        "SOCKS5白名单"
+      ]
+    },
+    {
+      "module": "utils/helpers",
+      "start": 4,
+      "names": [
+        "EDT_版本号"
+      ]
+    },
+    {
+      "module": "runtime/state",
+      "start": 6,
+      "names": [
+        "WS早期数据最大字节",
+        "WS早期数据最大头长度"
+      ]
+    },
+    {
+      "module": "runtime/state",
+      "start": 7,
+      "names": [
+        "上行合包目标字节",
+        "上行队列最大字节",
+        "上行队列最大条目"
+      ]
+    },
+    {
+      "module": "runtime/state",
+      "start": 8,
+      "names": [
+        "下行Grain包字节",
+        "下行Grain尾部阈值",
+        "下行Grain低水位字节",
+        "下行Grain最大等待轮次"
+      ]
+    },
+    {
+      "module": "runtime/state",
+      "start": 9,
+      "names": [
+        "TCP并发拨号数",
+        "反代并发拨号数",
+        "预加载竞速拨号"
+      ]
+    },
+    {
+      "module": "runtime/state",
+      "start": 11,
+      "names": [
+        "特征码字典"
+      ]
+    },
+    {
+      "module": "runtime/state",
+      "start": 12,
+      "names": [
+        "汇聚订阅_UA"
+      ]
+    },
+    {
+      "module": "http/legacy-router",
+      "start": 14,
+      "names": [
+        "worker"
+      ]
+    },
+    {
+      "module": "transports/xhttp",
+      "start": 505,
+      "names": [
+        "HPACKHuffman码长"
+      ]
+    },
+    {
+      "module": "utils/helpers",
+      "start": 525,
+      "names": [
+        "获取本机标识"
+      ]
+    },
+    {
+      "module": "transports/xhttp",
+      "start": 529,
+      "names": [
+        "计算HPACKHuffman字节长度"
+      ]
+    },
+    {
+      "module": "transports/xhttp",
+      "start": 538,
+      "names": [
+        "提取叉HTTPPadding值"
+      ]
+    },
+    {
+      "module": "transports/xhttp",
+      "start": 552,
+      "names": [
+        "校验叉HTTPPadding"
+      ]
+    },
+    {
+      "module": "transports/xhttp",
+      "start": 559,
+      "names": [
+        "叉HTTPBase62字符集"
+      ]
+    },
+    {
+      "module": "transports/xhttp",
+      "start": 560,
+      "names": [
+        "生成叉HTTPPadding串"
+      ]
+    },
+    {
+      "module": "transports/xhttp",
+      "start": 569,
+      "names": [
+        "处理叉HTTP请求"
+      ]
+    },
+    {
+      "module": "transports/xhttp",
+      "start": 685,
+      "names": [
+        "处理叉HTTPUDP请求"
+      ]
+    },
+    {
+      "module": "transports/xhttp",
+      "start": 756,
+      "names": [
+        "有效数据长度"
+      ]
+    },
+    {
+      "module": "transports/xhttp",
+      "start": 763,
+      "names": [
+        "失效TCP连接世代"
+      ]
+    },
+    {
+      "module": "transports/xhttp",
+      "start": 773,
+      "names": [
+        "开始TCP连接世代"
+      ]
+    },
+    {
+      "module": "transports/xhttp",
+      "start": 792,
+      "names": [
+        "读取叉HTTP首包"
+      ]
+    },
+    {
+      "module": "transports/grpc",
+      "start": 953,
+      "names": [
+        "处理gRPC请求"
+      ]
+    },
+    {
+      "module": "transports/websocket",
+      "start": 1222,
+      "names": [
+        "是有效WS早期数据"
+      ]
+    },
+    {
+      "module": "transports/websocket",
+      "start": 1234,
+      "names": [
+        "解码WS早期数据"
+      ]
+    },
+    {
+      "module": "transports/websocket",
+      "start": 1264,
+      "names": [
+        "处理WS请求"
+      ]
+    },
+    {
+      "module": "protocols/trojan",
+      "start": 1763,
+      "names": [
+        "木马文本解码器"
+      ]
+    },
+    {
+      "module": "protocols/trojan",
+      "start": 1765,
+      "names": [
+        "解析木马反代地址"
+      ]
+    },
+    {
+      "module": "protocols/trojan",
+      "start": 1785,
+      "names": [
+        "连接木马反代"
+      ]
+    },
+    {
+      "module": "protocols/trojan",
+      "start": 1804,
+      "names": [
+        "提取木马反代握手数据"
+      ]
+    },
+    {
+      "module": "protocols/trojan",
+      "start": 1816,
+      "names": [
+        "转发木马UDP反代数据"
+      ]
+    },
+    {
+      "module": "protocols/trojan",
+      "start": 1832,
+      "names": [
+        "解析木马请求"
+      ]
+    },
+    {
+      "module": "protocols/vless",
+      "start": 1898,
+      "names": [
+        "UUID字节缓存"
+      ]
+    },
+    {
+      "module": "protocols/vless",
+      "start": 1899,
+      "names": [
+        "魏烈思文本解码器"
+      ]
+    },
+    {
+      "module": "protocols/vless",
+      "start": 1901,
+      "names": [
+        "读取十六进制半字节"
+      ]
+    },
+    {
+      "module": "protocols/vless",
+      "start": 1908,
+      "names": [
+        "获取UUID字节"
+      ]
+    },
+    {
+      "module": "protocols/vless",
+      "start": 1929,
+      "names": [
+        "UUID字节匹配"
+      ]
+    },
+    {
+      "module": "protocols/vless",
+      "start": 1938,
+      "names": [
+        "解析魏烈思请求"
+      ]
+    },
+    {
+      "module": "protocols/shadowsocks",
+      "start": 1988,
+      "names": [
+        "SS支持加密配置"
+      ]
+    },
+    {
+      "module": "protocols/shadowsocks",
+      "start": 1993,
+      "names": [
+        "SSAEAD标签长度",
+        "SSNonce长度"
+      ]
+    },
+    {
+      "module": "protocols/shadowsocks",
+      "start": 1994,
+      "names": [
+        "SS子密钥信息"
+      ]
+    },
+    {
+      "module": "protocols/shadowsocks",
+      "start": 1995,
+      "names": [
+        "SS文本编码器",
+        "SS文本解码器",
+        "SS主密钥缓存"
+      ]
+    },
+    {
+      "module": "network/streams",
+      "start": 1997,
+      "names": [
+        "数据转Uint8Array"
+      ]
+    },
+    {
+      "module": "network/streams",
+      "start": 2004,
+      "names": [
+        "拼接字节数据"
+      ]
+    },
+    {
+      "module": "protocols/trojan",
+      "start": 2014,
+      "names": [
+        "转发木马UDP数据"
+      ]
+    },
+    {
+      "module": "protocols/shadowsocks",
+      "start": 2089,
+      "names": [
+        "SS递增Nonce计数器"
+      ]
+    },
+    {
+      "module": "protocols/shadowsocks",
+      "start": 2093,
+      "names": [
+        "SS派生主密钥"
+      ]
+    },
+    {
+      "module": "protocols/shadowsocks",
+      "start": 2112,
+      "names": [
+        "SS派生会话密钥"
+      ]
+    },
+    {
+      "module": "protocols/shadowsocks",
+      "start": 2129,
+      "names": [
+        "SSAEAD加密"
+      ]
+    },
+    {
+      "module": "protocols/shadowsocks",
+      "start": 2136,
+      "names": [
+        "SSAEAD解密"
+      ]
+    },
+    {
+      "module": "network/tcp",
+      "start": 2143,
+      "names": [
+        "forwardataTCP"
+      ]
+    },
+    {
+      "module": "network/dns",
+      "start": 2441,
+      "names": [
+        "forwardataudp"
+      ]
+    },
+    {
+      "module": "network/streams",
+      "start": 2481,
+      "names": [
+        "closeSocketQuietly"
+      ]
+    },
+    {
+      "module": "protocols/vless",
+      "start": 2489,
+      "names": [
+        "formatIdentifier"
+      ]
+    },
+    {
+      "module": "network/streams",
+      "start": 2494,
+      "names": [
+        "WebSocket发送并等待"
+      ]
+    },
+    {
+      "module": "network/streams",
+      "start": 2499,
+      "names": [
+        "创建Grain收纳器"
+      ]
+    },
+    {
+      "module": "network/streams",
+      "start": 2575,
+      "names": [
+        "创建上行Grain合包流"
+      ]
+    },
+    {
+      "module": "network/streams",
+      "start": 2656,
+      "names": [
+        "创建上行写入队列"
+      ]
+    },
+    {
+      "module": "network/streams",
+      "start": 2800,
+      "names": [
+        "创建下行Grain发送器"
+      ]
+    },
+    {
+      "module": "network/streams",
+      "start": 3000,
+      "names": [
+        "connectStreams"
+      ]
+    },
+    {
+      "module": "network/tcp",
+      "start": 3070,
+      "names": [
+        "isSpeedTestSite"
+      ]
+    },
+    {
+      "module": "network/tcp",
+      "start": 3076,
+      "names": [
+        "构造本地204响应"
+      ]
+    },
+    {
+      "module": "network/tcp",
+      "start": 3092,
+      "names": [
+        "构造WS本地204响应"
+      ]
+    },
+    {
+      "module": "proxies/connect",
+      "start": 3108,
+      "names": [
+        "socks5Connect"
+      ]
+    },
+    {
+      "module": "proxies/connect",
+      "start": 3144,
+      "names": [
+        "httpConnect"
+      ]
+    },
+    {
+      "module": "proxies/connect",
+      "start": 3202,
+      "names": [
+        "httpsConnect"
+      ]
+    },
+    {
+      "module": "network/tcp",
+      "start": 3303,
+      "names": [
+        "创建请求TCP连接器"
+      ]
+    },
+    {
+      "module": "crypto/tls",
+      "start": 3306,
+      "names": [
+        "TLS_VERSION_10",
+        "TLS_VERSION_12",
+        "TLS_VERSION_13"
+      ]
+    },
+    {
+      "module": "crypto/tls",
+      "start": 3307,
+      "names": [
+        "CONTENT_TYPE_CHANGE_CIPHER_SPEC",
+        "CONTENT_TYPE_ALERT",
+        "CONTENT_TYPE_HANDSHAKE",
+        "CONTENT_TYPE_APPLICATION_DATA"
+      ]
+    },
+    {
+      "module": "crypto/tls",
+      "start": 3308,
+      "names": [
+        "HANDSHAKE_TYPE_CLIENT_HELLO",
+        "HANDSHAKE_TYPE_SERVER_HELLO",
+        "HANDSHAKE_TYPE_NEW_SESSION_TICKET",
+        "HANDSHAKE_TYPE_ENCRYPTED_EXTENSIONS",
+        "HANDSHAKE_TYPE_CERTIFICATE",
+        "HANDSHAKE_TYPE_SERVER_KEY_EXCHANGE",
+        "HANDSHAKE_TYPE_CERTIFICATE_REQUEST",
+        "HANDSHAKE_TYPE_SERVER_HELLO_DONE",
+        "HANDSHAKE_TYPE_CERTIFICATE_VERIFY",
+        "HANDSHAKE_TYPE_CLIENT_KEY_EXCHANGE",
+        "HANDSHAKE_TYPE_FINISHED",
+        "HANDSHAKE_TYPE_KEY_UPDATE"
+      ]
+    },
+    {
+      "module": "utils/helpers",
+      "start": 3309,
+      "names": [
+        "EXT_SERVER_NAME",
+        "EXT_SUPPORTED_GROUPS",
+        "EXT_EC_POINT_FORMATS",
+        "EXT_SIGNATURE_ALGORITHMS",
+        "EXT_APPLICATION_LAYER_PROTOCOL_NEGOTIATION",
+        "EXT_SUPPORTED_VERSIONS",
+        "EXT_PSK_KEY_EXCHANGE_MODES",
+        "EXT_KEY_SHARE"
+      ]
+    },
+    {
+      "module": "crypto/tls",
+      "start": 3311,
+      "names": [
+        "ALERT_CLOSE_NOTIFY",
+        "ALERT_LEVEL_WARNING",
+        "ALERT_UNRECOGNIZED_NAME"
+      ]
+    },
+    {
+      "module": "crypto/tls",
+      "start": 3312,
+      "names": [
+        "shouldIgnoreTlsAlert"
+      ]
+    },
+    {
+      "module": "utils/helpers",
+      "start": 3314,
+      "names": [
+        "textEncoder"
+      ]
+    },
+    {
+      "module": "utils/helpers",
+      "start": 3315,
+      "names": [
+        "textDecoder"
+      ]
+    },
+    {
+      "module": "utils/helpers",
+      "start": 3316,
+      "names": [
+        "EMPTY_BYTES"
+      ]
+    },
+    {
+      "module": "crypto/tls",
+      "start": 3318,
+      "names": [
+        "CIPHER_SUITES_BY_ID"
+      ]
+    },
+    {
+      "module": "utils/helpers",
+      "start": 3329,
+      "names": [
+        "GROUPS_BY_ID"
+      ]
+    },
+    {
+      "module": "crypto/tls",
+      "start": 3330,
+      "names": [
+        "SUPPORTED_SIGNATURE_ALGORITHMS"
+      ]
+    },
+    {
+      "module": "crypto/tls",
+      "start": 3332,
+      "names": [
+        "tlsBytes"
+      ]
+    },
+    {
+      "module": "crypto/tls",
+      "start": 3336,
+      "names": [
+        "uint16be"
+      ]
+    },
+    {
+      "module": "crypto/tls",
+      "start": 3337,
+      "names": [
+        "readUint16"
+      ]
+    },
+    {
+      "module": "crypto/tls",
+      "start": 3338,
+      "names": [
+        "readUint24"
+      ]
+    },
+    {
+      "module": "crypto/tls",
+      "start": 3339,
+      "names": [
+        "concatBytes"
+      ]
+    },
+    {
+      "module": "crypto/tls",
+      "start": 3347,
+      "names": [
+        "randomBytes"
+      ]
+    },
+    {
+      "module": "crypto/tls",
+      "start": 3348,
+      "names": [
+        "constantTimeEqual"
+      ]
+    },
+    {
+      "module": "crypto/tls",
+      "start": 3353,
+      "names": [
+        "hashByteLength"
+      ]
+    },
+    {
+      "module": "crypto/tls",
+      "start": 3354,
+      "names": [
+        "hmac"
+      ]
+    },
+    {
+      "module": "crypto/tls",
+      "start": 3358,
+      "names": [
+        "digestBytes"
+      ]
+    },
+    {
+      "module": "crypto/tls",
+      "start": 3359,
+      "names": [
+        "tls12Prf"
+      ]
+    },
+    {
+      "module": "crypto/tls",
+      "start": 3370,
+      "names": [
+        "hkdfExtract"
+      ]
+    },
+    {
+      "module": "crypto/tls",
+      "start": 3373,
+      "names": [
+        "hkdfExpandLabel"
+      ]
+    },
+    {
+      "module": "crypto/tls",
+      "start": 3384,
+      "names": [
+        "generateKeyShare"
+      ]
+    },
+    {
+      "module": "crypto/tls",
+      "start": 3390,
+      "names": [
+        "deriveSharedSecret"
+      ]
+    },
+    {
+      "module": "crypto/tls",
+      "start": 3396,
+      "names": [
+        "importAesGcmKey"
+      ]
+    },
+    {
+      "module": "crypto/tls",
+      "start": 3397,
+      "names": [
+        "aesGcmEncryptWithKey"
+      ]
+    },
+    {
+      "module": "crypto/tls",
+      "start": 3400,
+      "names": [
+        "aesGcmDecryptWithKey"
+      ]
+    },
+    {
+      "module": "crypto/tls",
+      "start": 3404,
+      "names": [
+        "rotateLeft32"
+      ]
+    },
+    {
+      "module": "crypto/tls",
+      "start": 3406,
+      "names": [
+        "chachaQuarterRound"
+      ]
+    },
+    {
+      "module": "crypto/tls",
+      "start": 3410,
+      "names": [
+        "chacha20Block"
+      ]
+    },
+    {
+      "module": "crypto/tls",
+      "start": 3424,
+      "names": [
+        "chacha20Xor"
+      ]
+    },
+    {
+      "module": "crypto/tls",
+      "start": 3435,
+      "names": [
+        "poly1305Mac"
+      ]
+    },
+    {
+      "module": "crypto/tls",
+      "start": 3464,
+      "names": [
+        "chacha20Poly1305Encrypt"
+      ]
+    },
+    {
+      "module": "crypto/tls",
+      "start": 3477,
+      "names": [
+        "chacha20Poly1305Decrypt"
+      ]
+    },
+    {
+      "module": "crypto/tls",
+      "start": 3495,
+      "names": [
+        "TLS_MAX_PLAINTEXT_FRAGMENT"
+      ]
+    },
+    {
+      "module": "crypto/tls",
+      "start": 3496,
+      "names": [
+        "buildTlsRecord"
+      ]
+    },
+    {
+      "module": "crypto/tls",
+      "start": 3507,
+      "names": [
+        "buildHandshakeMessage"
+      ]
+    },
+    {
+      "module": "crypto/tls",
+      "start": 3508,
+      "names": [
+        "TlsRecordParser"
+      ]
+    },
+    {
+      "module": "crypto/tls",
+      "start": 3524,
+      "names": [
+        "TlsHandshakeParser"
+      ]
+    },
+    {
+      "module": "crypto/tls",
+      "start": 3541,
+      "names": [
+        "parseServerHello"
+      ]
+    },
+    {
+      "module": "crypto/tls",
+      "start": 3578,
+      "names": [
+        "parseServerKeyExchange"
+      ]
+    },
+    {
+      "module": "crypto/tls",
+      "start": 3586,
+      "names": [
+        "extractLeafCertificate"
+      ]
+    },
+    {
+      "module": "crypto/tls",
+      "start": 3599,
+      "names": [
+        "parseEncryptedExtensions"
+      ]
+    },
+    {
+      "module": "crypto/tls",
+      "start": 3616,
+      "names": [
+        "buildClientHello"
+      ]
+    },
+    {
+      "module": "crypto/tls",
+      "start": 3648,
+      "names": [
+        "uint64be",
+        "xorSequenceIntoIv",
+        "deriveTrafficKeys"
+      ]
+    },
+    {
+      "module": "crypto/tls",
+      "start": 3656,
+      "names": [
+        "TlsClient"
+      ]
+    },
+    {
+      "module": "proxies/connect",
+      "start": 3990,
+      "names": [
+        "stripIPv6Brackets"
+      ]
+    },
+    {
+      "module": "proxies/connect",
+      "start": 3995,
+      "names": [
+        "isIPHostname"
+      ]
+    },
+    {
+      "module": "utils/helpers",
+      "start": 4009,
+      "names": [
+        "CONNECT_TIMEOUT_MS"
+      ]
+    },
+    {
+      "module": "utils/helpers",
+      "start": 4010,
+      "names": [
+        "TURN_STUN_MAGIC_COOKIE"
+      ]
+    },
+    {
+      "module": "utils/helpers",
+      "start": 4011,
+      "names": [
+        "TURN_STUN_TYPE"
+      ]
+    },
+    {
+      "module": "utils/helpers",
+      "start": 4017,
+      "names": [
+        "TURN_STUN_ATTR"
+      ]
+    },
+    {
+      "module": "proxies/turn",
+      "start": 4023,
+      "names": [
+        "withTimeout"
+      ]
+    },
+    {
+      "module": "proxies/turn",
+      "start": 4035,
+      "names": [
+        "isIPv4"
+      ]
+    },
+    {
+      "module": "transports/xhttp",
+      "start": 4040,
+      "names": [
+        "turnStunPadding"
+      ]
+    },
+    {
+      "module": "proxies/turn",
+      "start": 4044,
+      "names": [
+        "createTurnStunAttribute"
+      ]
+    },
+    {
+      "module": "proxies/turn",
+      "start": 4054,
+      "names": [
+        "createTurnStunMessage"
+      ]
+    },
+    {
+      "module": "proxies/turn",
+      "start": 4065,
+      "names": [
+        "parseTurnErrorCode"
+      ]
+    },
+    {
+      "module": "proxies/turn",
+      "start": 4069,
+      "names": [
+        "randomTurnTransactionId"
+      ]
+    },
+    {
+      "module": "proxies/turn",
+      "start": 4073,
+      "names": [
+        "addTurnMessageIntegrity"
+      ]
+    },
+    {
+      "module": "proxies/turn",
+      "start": 4082,
+      "names": [
+        "readTurnStunMessage"
+      ]
+    },
+    {
+      "module": "proxies/turn",
+      "start": 4112,
+      "names": [
+        "writeTurnBytes"
+      ]
+    },
+    {
+      "module": "proxies/turn",
+      "start": 4116,
+      "names": [
+        "turnConnect"
+      ]
+    },
+    {
+      "module": "utils/helpers",
+      "start": 4280,
+      "names": [
+        "SSTP_TCP_MSS"
+      ]
+    },
+    {
+      "module": "utils/helpers",
+      "start": 4281,
+      "names": [
+        "SSTP_EMPTY_BYTES"
+      ]
+    },
+    {
+      "module": "proxies/sstp",
+      "start": 4283,
+      "names": [
+        "readSstpUint16"
+      ]
+    },
+    {
+      "module": "proxies/sstp",
+      "start": 4287,
+      "names": [
+        "readSstpUint32"
+      ]
+    },
+    {
+      "module": "proxies/sstp",
+      "start": 4291,
+      "names": [
+        "randomSstpUint16"
+      ]
+    },
+    {
+      "module": "proxies/sstp",
+      "start": 4295,
+      "names": [
+        "internetChecksum"
+      ]
+    },
+    {
+      "module": "proxies/sstp",
+      "start": 4303,
+      "names": [
+        "sstpConnect"
+      ]
+    },
+    {
+      "module": "utils/helpers",
+      "start": 4720,
+      "names": [
+        "base64SecretEncode"
+      ]
+    },
+    {
+      "module": "utils/helpers",
+      "start": 4744,
+      "names": [
+        "base64SecretDecode"
+      ]
+    },
+    {
+      "module": "subscriptions/conversion",
+      "start": 4763,
+      "names": [
+        "获取传输协议配置"
+      ]
+    },
+    {
+      "module": "subscriptions/conversion",
+      "start": 4780,
+      "names": [
+        "获取传输路径参数值"
+      ]
+    },
+    {
+      "module": "utils/helpers",
+      "start": 4786,
+      "names": [
+        "log"
+      ]
+    },
+    {
+      "module": "subscriptions/conversion",
+      "start": 4790,
+      "names": [
+        "Clash订阅配置文件热补丁"
+      ]
+    },
+    {
+      "module": "subscriptions/conversion",
+      "start": 5007,
+      "names": [
+        "Singbox订阅配置文件热补丁"
+      ]
+    },
+    {
+      "module": "subscriptions/conversion",
+      "start": 5287,
+      "names": [
+        "Surge订阅配置文件热补丁"
+      ]
+    },
+    {
+      "module": "integrations/services",
+      "start": 5306,
+      "names": [
+        "请求日志记录"
+      ]
+    },
+    {
+      "module": "integrations/services",
+      "start": 5361,
+      "names": [
+        "掩码敏感信息"
+      ]
+    },
+    {
+      "module": "utils/helpers",
+      "start": 5372,
+      "names": [
+        "MD5MD5"
+      ]
+    },
+    {
+      "module": "utils/helpers",
+      "start": 5386,
+      "names": [
+        "随机路径"
+      ]
+    },
+    {
+      "module": "utils/helpers",
+      "start": 5394,
+      "names": [
+        "替换星号为随机字符"
+      ]
+    },
+    {
+      "module": "network/dns",
+      "start": 5404,
+      "names": [
+        "DoH缓存"
+      ]
+    },
+    {
+      "module": "network/dns",
+      "start": 5405,
+      "names": [
+        "DoH缓存最大条目"
+      ]
+    },
+    {
+      "module": "network/dns",
+      "start": 5406,
+      "names": [
+        "DoH记录类型映射"
+      ]
+    },
+    {
+      "module": "network/dns",
+      "start": 5407,
+      "names": [
+        "DoH查询"
+      ]
+    },
+    {
+      "module": "config/store",
+      "start": 5567,
+      "names": [
+        "读取config_JSON"
+      ]
+    },
+    {
+      "module": "subscriptions/addresses",
+      "start": 5817,
+      "names": [
+        "识别运营商"
+      ]
+    },
+    {
+      "module": "subscriptions/addresses",
+      "start": 5847,
+      "names": [
+        "生成随机IP"
+      ]
+    },
+    {
+      "module": "utils/helpers",
+      "start": 5880,
+      "names": [
+        "整理成数组"
+      ]
+    },
+    {
+      "module": "subscriptions/conversion",
+      "start": 5888,
+      "names": [
+        "获取优选订阅生成器数据"
+      ]
+    },
+    {
+      "module": "subscriptions/conversion",
+      "start": 5939,
+      "names": [
+        "请求优选API"
+      ]
+    },
+    {
+      "module": "proxies/parameters",
+      "start": 6143,
+      "names": [
+        "反代参数获取"
+      ]
+    },
+    {
+      "module": "proxies/parameters",
+      "start": 6279,
+      "names": [
+        "反代协议默认端口"
+      ]
+    },
+    {
+      "module": "proxies/parameters",
+      "start": 6280,
+      "names": [
+        "获取代理默认端口"
+      ]
+    },
+    {
+      "module": "proxies/parameters",
+      "start": 6284,
+      "names": [
+        "SOCKS5账号Base64正则",
+        "IPv6方括号正则"
+      ]
+    },
+    {
+      "module": "proxies/parameters",
+      "start": 6285,
+      "names": [
+        "获取SOCKS5账号"
+      ]
+    },
+    {
+      "module": "integrations/services",
+      "start": 6318,
+      "names": [
+        "getCloudflareUsage"
+      ]
+    },
+    {
+      "module": "utils/helpers",
+      "start": 6376,
+      "names": [
+        "sha224"
+      ]
+    },
+    {
+      "module": "proxies/parameters",
+      "start": 6409,
+      "names": [
+        "解析地址端口"
+      ]
+    }
+  ]
+}

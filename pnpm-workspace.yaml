@@ -1,0 +1,6 @@
+allowBuilds:
+  esbuild: set this to true or false
+  workerd: set this to true or false
+minimumReleaseAgeExclude:
+  - '@types/node@26.6.5'
+  - '@vitejs/plugin-vue@6.0.10'

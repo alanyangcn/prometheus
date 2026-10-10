@@ -1,0 +1,4 @@
+# Local development only. Copy to .dev.vars and set your own password.
+ADMIN=""
+# UUID="your-uuid-v4"
+# OFF_LOG="true"
