@@ -1,7 +1,18 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref } from 'vue';
+import IPDetails from './IPDetails.vue';
+import NetworkDetails from './NetworkDetails.vue';
+import { api } from '../../api/client';
 import NetworkDiagnostics from './NetworkDiagnostics.vue';
 const expanded = ref(false);
+const detailDialog = ref<HTMLDialogElement | null>(null), detail = ref<Record<string,unknown> | null>(null), detailError = ref(''), detailBusy = ref(false), showNetworkDetails = ref(false);
+let detailGeneration = 0;
+async function showIP(ip: string | undefined) {
+  if (!ip) return; const generation = ++detailGeneration; showNetworkDetails.value = false; detail.value = null; detailError.value = ''; detailBusy.value = true; detailDialog.value?.showModal();
+  try { const value = await api<Record<string,unknown>>('/api/tools/ip-info',{ip}); if (generation === detailGeneration) detail.value = value; } catch (cause) { if (generation === detailGeneration) detailError.value = cause instanceof Error ? cause.message : '查询失败'; } finally { if (generation === detailGeneration) detailBusy.value = false; }
+}
+function showCurrentNetwork() { ++detailGeneration; showNetworkDetails.value = true; detailBusy.value = false; detailError.value = ''; detailDialog.value?.showModal(); }
+
 const cloudflareIndex = ref(0);
 const wallSource = ref('Google');
 import { networkSources, probeNetwork, type NetworkResult } from './network';
@@ -47,16 +58,16 @@ function visibleResults(group: string): NetworkResult[] {
   return entries;
 }
 onMounted(() => { void refresh(); });
-onUnmounted(() => controller?.abort());
+onUnmounted(() => {controller?.abort(); ++detailGeneration; detailDialog.value?.close();});
 </script>
 <template>
   <section class="card network-overview" aria-label="当前网络信息" :aria-busy="busy">
-    <div class="network-heading"><h2>当前网络信息</h2><div class="network-heading-actions"><button type="button" class="secondary" :disabled="busy" @click="refresh">{{ busy ? '检测中…' : '重新检测' }}</button><button type="button" class="secondary latency-expand" :aria-expanded="expanded" aria-controls="site-latency" :aria-label="expanded ? '收起站点延迟' : '展开站点延迟并测速'" :title="expanded ? '收起站点延迟' : '展开站点延迟并测速'" @click="expanded = !expanded"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true" :class="{ expanded }"><path d="m7 10 5 5 5-5" /></svg></button></div></div>
+    <div class="network-heading"><h2>当前网络信息</h2><div class="network-heading-actions"><button type="button" class="secondary" @click="showCurrentNetwork">网络详情</button><button type="button" class="secondary" :disabled="busy" @click="refresh">{{ busy ? '检测中…' : '重新检测' }}</button><button type="button" class="secondary latency-expand" :aria-expanded="expanded" aria-controls="site-latency" :aria-label="expanded ? '收起站点延迟' : '展开站点延迟并测速'" :title="expanded ? '收起站点延迟' : '展开站点延迟并测速'" @click="expanded = !expanded"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true" :class="{ expanded }"><path d="m7 10 5 5 5-5" /></svg></button></div></div>
     <div class="network-grid">
       <article v-for="card in cards" :key="card.group" class="network-tile">
         <div class="network-tile-heading"><span class="network-indicator" :class="{ ready: visibleResults(card.group).some(result => result.success), pending: !completed[card.group] }" aria-hidden="true" /><h3>{{ card.title }}</h3><span v-if="card.group === 'Cloudflare 出口'" class="network-provider"><template v-if="results[card.group]?.length"><template v-for="(entry, index) in results[card.group]" :key="entry.ip"><span v-if="index" class="probe-separator"> / </span><button type="button" class="secondary probe-selector" :class="{ active: cloudflareIndex === index }" :aria-pressed="cloudflareIndex === index" @click="cloudflareIndex = index">{{ cloudflareIndex === index ? `ProxyIP${entry.version}` : entry.version }}</button></template></template><template v-else>ProxyIP</template></span><span v-else-if="card.group === '墙外测试'" class="network-provider"><button v-for="source in ['Google', 'X.com']" :key="source" type="button" class="secondary probe-selector" :class="{ active: wallSource === source }" :aria-pressed="wallSource === source" @click="wallSource = source">{{ source === 'Google' ? '谷歌(Google)' : '推特(X.com)' }}</button></span><span v-else class="network-provider">{{ results[card.group]?.map(result => result.name).join(' / ') }}</span></div>
         <div v-for="result in visibleResults(card.group).filter(result => result.success)" :key="result.name" class="network-result">
-          <div class="network-address"><span>{{ result.ip }}</span><span class="network-version">{{ result.version }}</span></div>
+          <div class="network-address"><button type="button" class="secondary ip-detail-link" :aria-label="`查询 ${result.ip} 的 IP 详情`" title="查询 IP 详情" @click="showIP(result.ip)">{{ result.ip }} <span aria-hidden="true">⌕</span></button><span class="network-version">{{ result.version }}</span></div>
           <p class="network-location">{{ result.location || '地区信息未提供' }}<span v-if="result.asn"> · AS{{ result.asn }}</span></p>
         </div>
         <p v-if="!visibleResults(card.group).some(result => result.success)" class="network-state" role="status">{{ completed[card.group] ? '暂时无法获取，可能受网络或跨域策略限制' : '正在检测网络出口…' }}</p>
@@ -65,6 +76,7 @@ onUnmounted(() => controller?.abort());
     </div>
     <p class="network-note"><strong>国内测试</strong> 是由您梯子的 <strong>分流规则</strong> 决定的，<strong>国外测试、谷歌</strong> 是由您的 <strong>优选IP</strong> 决定的，而 <strong>CF、ChatGPT、推特</strong> 是由您的 <strong>PROXYIP</strong> 决定的。</p>
     <NetworkDiagnostics v-if="expanded" />
+    <Teleport to="body"><dialog ref="detailDialog" class="network-detail-dialog" aria-labelledby="network-detail-title"><div class="network-detail-heading"><h2 id="network-detail-title">{{ showNetworkDetails ? '网络详情' : 'IP 详情' }}</h2><button type="button" class="secondary" @click="detailDialog?.close()">关闭</button></div><NetworkDetails v-if="showNetworkDetails" /><p v-if="detailBusy" role="status">查询中…</p><p v-if="detailError" role="alert" class="error">{{ detailError }}</p><IPDetails v-if="!showNetworkDetails && detail" :value="detail" /></dialog></Teleport>
   </section>
 </template>
 <style scoped>
@@ -101,4 +113,7 @@ onUnmounted(() => controller?.abort());
 :global(:root[data-theme=dark] .network-address) { color: #8ab5e8; }
 :global(:root[data-theme=dark] .network-tile .network-location) { color: #a0b2cb; }
 @media (max-width: 600px) { .network-grid { grid-template-columns: 1fr; gap: 12px; } .network-tile { padding: 16px; border-radius: 16px; } .network-address { font-size: 13px; } }
+.network-overview .network-address .ip-detail-link { min-height: 0; padding: 0; border: 0; background: transparent; box-shadow: none; font: inherit; color: inherit; text-align: left; overflow-wrap: anywhere; }
+.network-detail-dialog { width: min(680px, calc(100vw - 32px)); max-height: 85dvh; padding: 24px; border: 1px solid #ffffffb3; border-radius: 24px; color: #425773; background: #f0f5fbf5; }.network-detail-dialog::backdrop { background: #18263f50; backdrop-filter: blur(5px); }.network-detail-heading { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-bottom: 20px; }.network-detail-heading h2 { font-size: 18px; }
+:global(:root[data-theme=dark] .network-detail-dialog) { background: #1c2b3cf5; color: #b1c1d8; border-color: #ffffff20; }
 </style>

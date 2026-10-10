@@ -58,10 +58,9 @@ async function logout() {
       <RouterLink to="/Illumination">概览</RouterLink>
       <RouterLink to="/Illumination/settings">节点配置</RouterLink>
       <RouterLink to="/Illumination/subscription">优选订阅</RouterLink>
-      <RouterLink to="/Illumination/addresses">地址库</RouterLink>
-      <RouterLink to="/Illumination/proxies">代理检测</RouterLink>
-      <RouterLink to="/Illumination/tools">实用工具</RouterLink>
-      <RouterLink to="/Illumination/optimize">浏览器优选</RouterLink>
+      <RouterLink to="/Illumination/ech">ECH</RouterLink>
+      <RouterLink to="/Illumination/cdn">Cloudflare CDN</RouterLink>
+      <RouterLink to="/Illumination/conversion">订阅转换</RouterLink>
       <RouterLink to="/Illumination/logs">日志</RouterLink>
     </nav>
     <p v-if="error" role="alert" class="error">{{ error }}</p>

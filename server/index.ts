@@ -6,7 +6,7 @@ import type { WorkerEnv } from './env';
 import { hasEntryMarker, recordEntry } from './auth/entry-marker';
 
 const legacyManagementPaths = new Set(['/admin/config.json', '/admin/ADD.txt', '/admin/log.json', '/admin/init', '/admin/getADDAPI', '/admin/check']);
-const managementPages = new Set(['/spark', '/Illumination', '/Illumination/settings', '/Illumination/subscription', '/Illumination/addresses', '/Illumination/proxies', '/Illumination/logs', '/Illumination/tools', '/Illumination/optimize']);
+const managementPages = new Set(['/spark', '/Illumination', '/Illumination/settings', '/Illumination/subscription', '/Illumination/ech', '/Illumination/cdn', '/Illumination/conversion', '/Illumination/logs']);
 function managementBase(env: WorkerEnv): string {
   const value = env.ADMIN_PATH?.trim().replace(/^\/+|\/+$/g, '') || '';
   // One URL-safe segment; never collide with assets, API or protocol endpoints.

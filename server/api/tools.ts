@@ -13,7 +13,8 @@ function https(value: unknown, allowHTTP = false): URL {
   return url;
 }
 async function remote(url: URL | string, init?: RequestInit) {
-  const response = await fetch(url, { ...init, redirect: 'error', signal: AbortSignal.timeout(8000) });
+  const response = await fetch(url, { ...init, redirect: 'manual', signal: AbortSignal.timeout(8000) });
+  if (response.status >= 300 && response.status < 400) throw new Error('外部服务重定向被拒绝');
   if (!response.ok) throw new Error(`外部服务返回 HTTP ${response.status}`);
   return response;
 }
