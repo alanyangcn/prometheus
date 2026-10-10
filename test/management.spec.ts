@@ -135,3 +135,36 @@ it('saves optional ECH SNI and an explicitly selected upstream proxy without cha
   expect(data.ECHConfig.SNI).toBeNull(); expect(data.gRPCUserAgent).toBe('custom-client');
   expect(data.反代.SOCKS5.启用).toBe('https'); expect(data.UUID).toBe(f.env.UUID);
 });
+
+it('audits configuration visits, successful saves and resets without recording rejected changes', async () => {
+  const f = fixture(); const cookie = await login(f);
+  await f.request('/api/config', undefined, cookie);
+  await f.request('/api/config', undefined, cookie);
+  expect((await f.request('/api/config', { 优选订阅生成: { SUBNAME: 'first' } }, cookie)).status).toBe(200);
+  expect((await f.request('/api/config', { 优选订阅生成: { SUBNAME: 'second' } }, cookie)).status).toBe(200);
+  expect((await f.request('/api/config', { 协议类型: 'invalid' }, cookie)).status).toBe(400);
+  await f.request('/api/addresses', { text: 'example.net:443' }, cookie);
+  await f.request('/api/config/reset', {}, cookie);
+  const logs = JSON.parse(f.data.get('log.json')!);
+  expect(logs.map((log: any) => log.TYPE)).toEqual(['Admin_Login', 'Save_Config', 'Save_Config', 'Save_Custom_IPs', 'Init_Config']);
+  expect(JSON.stringify(logs)).not.toContain(f.env.ADMIN);
+  expect(JSON.stringify(logs)).not.toContain(cookie);
+});
+
+it('serves the network deep link only after login and keeps the public homepage separate', async () => {
+  const f = fixture(); const cookie = await login(f);
+  const env = { ...f.env, ASSETS: { fetch: async (request: Request) => new Response(`<html><head></head><body>${new URL(request.url).pathname}</body></html>`, { headers: { 'Content-Type': 'text/html' } }) } };
+  async function page(path: string, session?: string) {
+    const ctx = createExecutionContext();
+    const response = await worker.fetch(new Request(`https://example.com${path}`, { headers: session ? { Cookie: session, 'User-Agent': 'prometheus-test' } : {} }), env as any, ctx);
+    await waitOnExecutionContext(ctx); return response;
+  }
+  const anonymous = await page('/test-entry/Illumination/network');
+  expect(anonymous.status).toBe(302); expect(anonymous.headers.get('Location')).toBe('/test-entry/spark');
+  const authorized = await page('/test-entry/Illumination/network', cookie);
+  expect(authorized.status).toBe(200);
+  const html = await authorized.text(); expect(html).toContain('/admin.html'); expect(html).toContain('content="/test-entry/"');
+  const home = await page('/'); expect(home.status).toBe(200);
+  expect(await home.text()).toContain('/index.html');
+  expect((await page('/wrong/Illumination/network')).status).toBe(404);
+});

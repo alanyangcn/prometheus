@@ -22,7 +22,7 @@ function update(key: string, event: Event) {
     </fieldset>
     <div v-else-if="!isObject(value)" class="field">
       <label :for="`${prefix || 'config'}-${key}`">{{ key }}</label>
-      <select v-if="choices[key]" :id="`${prefix || 'config'}-${key}`" :value="value ?? ''" :disabled="disabled?.includes(key)" @change="update(key, $event)"><option v-for="option in choices[key]" :key="option" :value="option">{{ option || '关闭' }}</option></select>
+      <select v-glass-select v-if="choices[key]" :id="`${prefix || 'config'}-${key}`" :value="value ?? ''" :disabled="disabled?.includes(key)" @change="update(key, $event)"><option v-for="option in choices[key]" :key="option" :value="option">{{ option || '关闭' }}</option></select>
       <input v-else-if="typeof value === 'boolean'" :id="`${prefix || 'config'}-${key}`" type="checkbox" :checked="value" :disabled="disabled?.includes(key)" @change="update(key, $event)" />
       <textarea v-else-if="Array.isArray(value)" :id="`${prefix || 'config'}-${key}`" :value="value.join('\n')" :disabled="readonly.has(key)" rows="3" @input="update(key, $event)" />
       <input v-else :id="`${prefix || 'config'}-${key}`" :type="typeof value === 'number' ? 'number' : 'text'" :value="value ?? ''" :disabled="readonly.has(key)" @input="update(key, $event)" />

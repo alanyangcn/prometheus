@@ -27,6 +27,16 @@
 - 默认外部服务须在 README 和配置中显式说明；不要把第三方网络可用性当作本项目保证。
 - 无生产凭据时只运行本地测试、构建和 dry-run；未经用户授权不部署、不发送 Telegram 测试消息。
 
+## 前端与页面约定
+
+- 摄影首页使用 `index.html` / `src/photography.ts`，管理页使用 `admin.html` / `src/main.ts`。摄影入口不得导入管理业务、路由或 Pinia。
+- 管理路径由运行时 ADMIN_PATH 决定；新增页面须同步 Vue Router 和 Worker 的 managementPages 白名单，并验证深链接鉴权。
+- 管理 tabs 为概览、网络信息、节点配置、优选订阅、订阅转换、ECH、Cloudflare CDN、日志。字段迁移后删除原位置，避免重复配置表单。
+- 原生弹窗使用共享 glass-dialog 样式和 vGlassDialog；选择框使用 v-glass-select；勾选框遵循共享 checkbox.css。明暗主题和移动端均需兼容，减少透明度偏好与键盘操作不能被样式破坏。
+- 操作成功与失败使用 useToast / useToastMessage，不在表单中追加反馈文本；保留必要的说明、进度和结构化结果。
+- Telegram 通知、Cloudflare 请求用量、Snippet 生成与本地优选工具下载目录已删除，不恢复；Telegram.DC5 延迟测试保留。
+- 不提交 .dev.vars、生产秘密、reference 或 work 中的临时资料。不启动用户已运行的本地服务；是否提交、推送或部署遵循当前用户授权。
+
 ## 验证
 
 运行 `npm test`、`npm run build`、`npx wrangler deploy --dry-run`。涉及路由时检查首页、登录页、深链接、管理 API 与订阅/隧道路由不会被 SPA 回退吞掉。
@@ -36,3 +46,5 @@
 ## 来源
 
 迁移代码保留 edgetunnel 与相关上游署名，遵循根目录 LICENSE（GPL v2）。源文件里的“非开源”注释不替代许可证。
+
+日志变更需覆盖管理访问去重、重复保存不丢记录、OFF_LOG 与 URL 脱敏；Toast 变更需覆盖消息顺序、持续时间及重复相同错误。UI 自动化未覆盖的视觉、触屏与原生弹窗行为应明确说明，不以类型检查代替实际交互验证。

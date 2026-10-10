@@ -1,17 +1,16 @@
 <script setup lang="ts">
+import { useToastMessage } from '../../composables/useToast';
+import { vGlassDialog } from '../appearance/glassDialog';
 import { onMounted, onUnmounted, ref } from 'vue';
 import IPDetails from './IPDetails.vue';
-import NetworkDetails from './NetworkDetails.vue';
 import { api } from '../../api/client';
 import NetworkDiagnostics from './NetworkDiagnostics.vue';
-const expanded = ref(false);
-const detailDialog = ref<HTMLDialogElement | null>(null), detail = ref<Record<string,unknown> | null>(null), detailError = ref(''), detailBusy = ref(false), showNetworkDetails = ref(false);
+const detailDialog = ref<HTMLDialogElement | null>(null), detail = ref<Record<string,unknown> | null>(null), detailError = useToastMessage('error'), detailBusy = ref(false);
 let detailGeneration = 0;
 async function showIP(ip: string | undefined) {
-  if (!ip) return; const generation = ++detailGeneration; showNetworkDetails.value = false; detail.value = null; detailError.value = ''; detailBusy.value = true; detailDialog.value?.showModal();
+  if (!ip) return; const generation = ++detailGeneration; detail.value = null; detailError.value = ''; detailBusy.value = true; detailDialog.value?.showModal();
   try { const value = await api<Record<string,unknown>>('/api/tools/ip-info',{ip}); if (generation === detailGeneration) detail.value = value; } catch (cause) { if (generation === detailGeneration) detailError.value = cause instanceof Error ? cause.message : '查询失败'; } finally { if (generation === detailGeneration) detailBusy.value = false; }
 }
-function showCurrentNetwork() { ++detailGeneration; showNetworkDetails.value = true; detailBusy.value = false; detailError.value = ''; detailDialog.value?.showModal(); }
 
 const cloudflareIndex = ref(0);
 const wallSource = ref('Google');
@@ -62,7 +61,7 @@ onUnmounted(() => {controller?.abort(); ++detailGeneration; detailDialog.value?.
 </script>
 <template>
   <section class="card network-overview" aria-label="当前网络信息" :aria-busy="busy">
-    <div class="network-heading"><h2>当前网络信息</h2><div class="network-heading-actions"><button type="button" class="secondary" @click="showCurrentNetwork">网络详情</button><button type="button" class="secondary" :disabled="busy" @click="refresh">{{ busy ? '检测中…' : '重新检测' }}</button><button type="button" class="secondary latency-expand" :aria-expanded="expanded" aria-controls="site-latency" :aria-label="expanded ? '收起站点延迟' : '展开站点延迟并测速'" :title="expanded ? '收起站点延迟' : '展开站点延迟并测速'" @click="expanded = !expanded"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true" :class="{ expanded }"><path d="m7 10 5 5 5-5" /></svg></button></div></div>
+    <div class="network-heading"><h2>当前网络信息</h2><div class="network-heading-actions"><button type="button" class="secondary" :disabled="busy" @click="refresh">{{ busy ? '检测中…' : '重新检测' }}</button></div></div>
     <div class="network-grid">
       <article v-for="card in cards" :key="card.group" class="network-tile">
         <div class="network-tile-heading"><span class="network-indicator" :class="{ ready: visibleResults(card.group).some(result => result.success), pending: !completed[card.group] }" aria-hidden="true" /><h3>{{ card.title }}</h3><span v-if="card.group === 'Cloudflare 出口'" class="network-provider"><template v-if="results[card.group]?.length"><template v-for="(entry, index) in results[card.group]" :key="entry.ip"><span v-if="index" class="probe-separator"> / </span><button type="button" class="secondary probe-selector" :class="{ active: cloudflareIndex === index }" :aria-pressed="cloudflareIndex === index" @click="cloudflareIndex = index">{{ cloudflareIndex === index ? `ProxyIP${entry.version}` : entry.version }}</button></template></template><template v-else>ProxyIP</template></span><span v-else-if="card.group === '墙外测试'" class="network-provider"><button v-for="source in ['Google', 'X.com']" :key="source" type="button" class="secondary probe-selector" :class="{ active: wallSource === source }" :aria-pressed="wallSource === source" @click="wallSource = source">{{ source === 'Google' ? '谷歌(Google)' : '推特(X.com)' }}</button></span><span v-else class="network-provider">{{ results[card.group]?.map(result => result.name).join(' / ') }}</span></div>
@@ -75,8 +74,8 @@ onUnmounted(() => {controller?.abort(); ++detailGeneration; detailDialog.value?.
       </article>
     </div>
     <p class="network-note"><strong>国内测试</strong> 是由您梯子的 <strong>分流规则</strong> 决定的，<strong>国外测试、谷歌</strong> 是由您的 <strong>优选IP</strong> 决定的，而 <strong>CF、ChatGPT、推特</strong> 是由您的 <strong>PROXYIP</strong> 决定的。</p>
-    <NetworkDiagnostics v-if="expanded" />
-    <Teleport to="body"><dialog ref="detailDialog" class="network-detail-dialog" aria-labelledby="network-detail-title"><div class="network-detail-heading"><h2 id="network-detail-title">{{ showNetworkDetails ? '网络详情' : 'IP 详情' }}</h2><button type="button" class="secondary" @click="detailDialog?.close()">关闭</button></div><NetworkDetails v-if="showNetworkDetails" /><p v-if="detailBusy" role="status">查询中…</p><p v-if="detailError" role="alert" class="error">{{ detailError }}</p><IPDetails v-if="!showNetworkDetails && detail" :value="detail" /></dialog></Teleport>
+    <NetworkDiagnostics />
+    <Teleport to="body"><dialog ref="detailDialog" v-glass-dialog class="network-detail-dialog glass-dialog" aria-labelledby="network-detail-title"><div class="network-detail-heading"><h2 id="network-detail-title">IP 详情</h2><button type="button" class="secondary" @click="detailDialog?.close()">关闭</button></div><p v-if="detailBusy" role="status">查询中…</p><IPDetails v-if="detail" :value="detail" /></dialog></Teleport>
   </section>
 </template>
 <style scoped>
@@ -84,9 +83,6 @@ onUnmounted(() => {controller?.abort(); ++detailGeneration; detailDialog.value?.
 .network-heading { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-bottom: 20px; }
 .network-heading h2 { margin: 0 !important; }
 .network-heading-actions { display: flex; align-items: center; gap: 8px; }
-.network-heading-actions button.latency-expand { display: grid; place-items: center; width: 40px; height: 40px; min-height: 40px; padding: 9px; }
-.latency-expand svg { width: 20px; height: 20px; }
-.latency-expand svg.expanded { transform: rotate(180deg); }
 .network-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
 .network-tile { min-width: 0; padding: 18px 20px; border-radius: 18px; border: 1px solid #ffffffb3; background: linear-gradient(135deg,#ffffff59,#ffffff26); box-shadow: inset 0 1px 1px #ffffff99,0 4px 12px #5477ae06; }
 .network-tile-heading { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; padding-bottom: 12px; margin-bottom: 14px; border-bottom: 1px solid #8295b21a; }
@@ -114,6 +110,6 @@ onUnmounted(() => {controller?.abort(); ++detailGeneration; detailDialog.value?.
 :global(:root[data-theme=dark] .network-tile .network-location) { color: #a0b2cb; }
 @media (max-width: 600px) { .network-grid { grid-template-columns: 1fr; gap: 12px; } .network-tile { padding: 16px; border-radius: 16px; } .network-address { font-size: 13px; } }
 .network-overview .network-address .ip-detail-link { min-height: 0; padding: 0; border: 0; background: transparent; box-shadow: none; font: inherit; color: inherit; text-align: left; overflow-wrap: anywhere; }
-.network-detail-dialog { width: min(680px, calc(100vw - 32px)); max-height: 85dvh; padding: 24px; border: 1px solid #ffffffb3; border-radius: 24px; color: #425773; background: #f0f5fbf5; }.network-detail-dialog::backdrop { background: #18263f50; backdrop-filter: blur(5px); }.network-detail-heading { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-bottom: 20px; }.network-detail-heading h2 { font-size: 18px; }
-:global(:root[data-theme=dark] .network-detail-dialog) { background: #1c2b3cf5; color: #b1c1d8; border-color: #ffffff20; }
+.network-detail-dialog { width: min(680px, calc(100vw - 32px)); }.network-detail-heading { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-bottom: 20px; }.network-detail-heading h2 { font-size: 18px; }
+
 </style>

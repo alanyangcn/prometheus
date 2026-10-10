@@ -1,12 +1,13 @@
 <script setup lang="ts">
+import { useToastMessage } from '../composables/useToast';
 import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue';
 import { attachLiquidGlass } from '../features/appearance/liquidGlass';
 import { useConfigStore } from '../stores/config';
 import ShareLink from '../components/ShareLink.vue';
-import NetworkOverview from '../features/tools/NetworkOverview.vue';
+import SubscriptionTokenHelp from '../components/SubscriptionTokenHelp.vue';
 import { subscriptionLinks } from '../features/sharing/links';
 import type { Configuration } from '../../shared/config';
-const store = useConfigStore(); const error = ref('');
+const store = useConfigStore(); const error = useToastMessage('error');
 const loading = ref(true);
 const subscriptionsGlass = ref<HTMLElement | null>(null);
 const cleanups: (() => void)[] = [];
@@ -26,15 +27,14 @@ const links = computed(() => subscriptionLinks(window.location.origin, token.val
 <template>
   <section class="illumination-overview" aria-labelledby="overview-title">
     <div class="overview-heading"><h1 id="overview-title" class="page-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/></svg><span>概览</span></h1></div>
-    <NetworkOverview />
-    <p v-if="error" role="alert" class="error">{{ error }}</p>
+
     <div v-if="loading" class="overview-loading" role="status">正在读取你的工作空间…</div>
     <div v-else-if="store.data" class="overview-grid">
       <section ref="subscriptionsGlass" class="overview-glass subscriptions-panel">
         <div class="panel-heading"><span class="panel-symbol" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="m10 13 4-4m-6 6-2 2a4 4 0 0 1-6-6l4-4a4 4 0 0 1 6 0m2 2 2-2a4 4 0 0 1 6 6l-4 4a4 4 0 0 1-6 0" transform="translate(2 0)" /></svg></span><div><h2>节点与订阅</h2><p>点击链接，即可复制</p></div></div>
         <div class="subscription-links">
         <ShareLink label="节点链接" :url="String(store.data.LINK || '')" :import-url="String(store.data.LINK || '')" />
-        <ShareLink v-for="link in links" :key="link.id" :label="link.label" :url="link.url" :import-url="link.importUrl" :filename="link.filename" />
+        <ShareLink v-for="link in links" :key="link.id" :label="link.label" :url="link.url" :import-url="link.importUrl" :filename="link.filename"><template v-if="link.id === 'auto'" #label-action><SubscriptionTokenHelp /></template></ShareLink>
         </div>
       </section>
     </div>
@@ -59,6 +59,7 @@ const links = computed(() => subscriptionLinks(window.location.origin, token.val
 .subscriptions-panel :deep(.actions) { align-items: center; gap: 8px; margin-top: 10px; }
 .subscriptions-panel :deep(button) { font-size: 11px; padding: 8px 12px; border-radius: 10px; }
 .subscriptions-panel :deep(.actions a) { font-size: 11px; padding: 6px 4px; }
+.subscriptions-panel :deep(.token-help-button) { width: 22px; height: 22px; min-height: 22px; padding: 0; border-radius: 50%; font-size: 12px; }
 .subscriptions-panel :deep(img) { max-width: 100%; height: auto; border-radius: 16px; margin-top: 16px; }
 .overview-loading { padding: 48px 24px; text-align: center; color: #8290a5; font-size: 13px; }
 :global(:root[data-theme=dark] .overview-glass) { border-color: #ffffff26; box-shadow: 0 14px 50px #0000001a; }

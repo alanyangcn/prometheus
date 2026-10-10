@@ -1,8 +1,9 @@
 <script setup lang="ts">
+import { useToastMessage } from '../composables/useToast';
 import { computed, onMounted, ref } from 'vue';
 import { api } from '../api/client';
 type Entry = Record<string, unknown>;
-const logs = ref<Entry[]>([]), error = ref(''), busy = ref(false);
+const logs = ref<Entry[]>([]), error = useToastMessage('error'), busy = ref(false);
 const entries = computed(() => [...logs.value].sort((a, b) => Number(b.TIME || 0) - Number(a.TIME || 0)));
 const operations: Record<string, string> = { Get_SUB: '获取订阅', Get_Best_SUB: '获取优选订阅', Save_Config: '保存配置', Save_Custom_IPs: '保存地址库', Init_Config: '初始化配置', Admin_Login: '访问管理页面' };
 async function load() { busy.value = true; error.value = ''; try { const value = await api<unknown>('/api/logs'); logs.value = Array.isArray(value) ? value.filter(x => x && typeof x === 'object') : []; } catch (e) { error.value = e instanceof Error ? e.message : '加载失败'; } finally { busy.value = false; } }
@@ -16,7 +17,7 @@ onMounted(load);
     <div class="logs-heading"><div><h1 class="page-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="3"/><path d="M9 8h6M9 12h6M9 16h4"/></svg><span>操作日志</span></h1></div><div class="logs-actions"><button :disabled="busy" @click="load">{{ busy ? '刷新中…' : '刷新日志' }}</button><button class="secondary" :disabled="!entries.length" @click="exportLogs">导出日志</button></div></div>
     <section class="card logs-surface" :aria-busy="busy" aria-label="日志记录">
       <div class="logs-summary"><h2>活动记录</h2><span>{{ entries.length }} 条记录</span></div>
-      <p v-if="error" role="alert" class="error">{{ error }}</p>
+
       <p v-if="busy && !entries.length" role="status" class="logs-empty">正在读取日志…</p>
       <p v-else-if="!entries.length && !error" class="logs-empty">暂无日志记录</p>
       <ol v-if="entries.length" class="log-list">

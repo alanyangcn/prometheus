@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { vGlassDialog } from '../features/appearance/glassDialog';
 import { computed, ref, watch, onBeforeUnmount } from 'vue';
 import type { Configuration } from '../../shared/config';
 import { group } from '../features/configuration/settings';
@@ -37,11 +38,11 @@ function changeDomain() { config.value.SNI = domainChoice.value === '__AUTO__' ?
   <section class="ech-configuration">
     <h2 v-if="showTitle !== false">Encrypted Client Hello</h2>
     <div class="field"><label for="ech-enabled">ECH 设置</label><div class="ech-toggle"><input id="ech-enabled" v-model="model.ECH" type="checkbox" :disabled="disabled" /><label for="ech-enabled">启用</label></div></div>
-      <div v-if="config.DNS !== undefined" class="field"><label for="ech-dns">EchConfig DNS 服务</label><select id="ech-dns" v-model="dnsChoice" @change="changeDNS"><option v-for="[url, name] in dnsOptions" :key="url" :value="url">{{ optionLabels[url] || name }}</option><option value="custom">自定义</option></select><input v-if="dnsChoice === 'custom'" v-model="config.DNS" aria-label="自定义 ECH DNS 服务" placeholder="udp://… 或 https://…" :required="model.ECH === true" @change="reconcileDomain" /></div>
-      <div v-if="config.SNI !== undefined" class="field"><label for="ech-domain">EchConfig 解析域名</label><select id="ech-domain" v-model="domainChoice" @change="changeDomain"><option value="__AUTO__">自动获取（使用节点伪装域名）</option><option v-for="domain in domains" :key="domain" :value="domain">{{ optionLabels[domain] || domain }}</option><option value="custom">自定义</option></select><input v-if="domainChoice === 'custom'" v-model="config.SNI" aria-label="自定义 ECH 解析域名" placeholder="cloudflare-ech.com" :required="model.ECH === true" /></div>
+      <div v-if="config.DNS !== undefined" class="field"><label for="ech-dns">EchConfig DNS 服务</label><select v-glass-select id="ech-dns" v-model="dnsChoice" @change="changeDNS"><option v-for="[url, name] in dnsOptions" :key="url" :value="url">{{ optionLabels[url] || name }}</option><option value="custom">自定义</option></select><input v-if="dnsChoice === 'custom'" v-model="config.DNS" aria-label="自定义 ECH DNS 服务" placeholder="udp://… 或 https://…" :required="model.ECH === true" @change="reconcileDomain" /></div>
+      <div v-if="config.SNI !== undefined" class="field"><label for="ech-domain">EchConfig 解析域名</label><select v-glass-select id="ech-domain" v-model="domainChoice" @change="changeDomain"><option value="__AUTO__">自动获取（使用节点伪装域名）</option><option v-for="domain in domains" :key="domain" :value="domain">{{ optionLabels[domain] || domain }}</option><option value="custom">自定义</option></select><input v-if="domainChoice === 'custom'" v-model="config.SNI" aria-label="自定义 ECH 解析域名" placeholder="cloudflare-ech.com" :required="model.ECH === true" /></div>
       <p class="hint">解析域名用于获取 EchConfig。选择国内 DNS 时，自动解析将改为 cloudflare-ech.com；实际可用性取决于客户端和 DNS 服务。</p>
     <button type="button" class="secondary ech-help-button" @click="openHelp">为什么需要 ECH？ECH 又是什么？</button>
-    <Teleport to="body"><dialog ref="helpDialog" class="ech-help-dialog" aria-labelledby="ech-help-title" @click="event => { if (event.target === helpDialog) helpDialog?.close(); }">
+    <Teleport to="body"><dialog ref="helpDialog" v-glass-dialog class="ech-help-dialog glass-dialog" aria-labelledby="ech-help-title" @click="event => { if (event.target === helpDialog) helpDialog?.close(); }">
       <div class="ech-help-heading"><h2 id="ech-help-title">Encrypted Client Hello</h2><button type="button" class="secondary" aria-label="关闭 ECH 帮助" @click="helpDialog?.close()">×</button></div>
       <div class="ech-help-tabs" role="tablist" aria-label="ECH 帮助"><button v-for="(title, index) in ['什么是 ECH？','如何使用？','如何确认生效？']" :id="`ech-help-tab-${index}`" :key="title" type="button" class="secondary" role="tab" :aria-selected="helpTab === index" aria-controls="ech-help-content" :class="{ active: helpTab === index }" @click="helpTab = index">{{ title }}</button></div>
       <div id="ech-help-content" role="tabpanel" :aria-labelledby="`ech-help-tab-${helpTab}`">
@@ -58,11 +59,11 @@ function changeDomain() { config.value.SNI = domainChoice.value === '__AUTO__' ?
 .ech-configuration h2 { font-size: 15px; margin-bottom: 18px; }
 .ech-toggle { display: flex; align-items: center; gap: 9px; } .ech-toggle label { margin: 0; }
 .ech-help-button { margin-top: 16px; }
-.ech-help-dialog { width: min(680px, calc(100vw - 32px)); max-height: 85dvh; padding: 24px; border: 1px solid #ffffffb3; border-radius: 24px; color: #425773; background: #f0f5fbef; box-shadow: 0 20px 80px #20365430; backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); }
-.ech-help-dialog::backdrop { background: #18263f50; backdrop-filter: blur(5px); }
+.ech-help-dialog { width: min(680px, calc(100vw - 32px)); }
+
 .ech-help-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; } .ech-help-heading h2 { font-size: 18px; }
 .ech-help-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin: 18px 0; } .ech-help-tabs button { font-size: 12px; padding: 10px; } .ech-help-tabs button.active { background: #528bc720; color: #3977b9; }
 .ech-help-dialog p, .ech-help-dialog li { font-size: 13px; line-height: 1.85; } .ech-help-dialog h3 { font-size: 15px; } .ech-help-close { margin-top: 18px; }
-:global(:root[data-theme=dark] .ech-help-dialog) { color: #b1c1d8; background: #1c2b3cef; border-color: #ffffff20; }
+
 :global(:root[data-theme=dark] .ech-help-tabs button.active) { color: #8ab5e8; background: #8ab5e820; }
 </style>

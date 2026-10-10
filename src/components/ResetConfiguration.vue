@@ -1,11 +1,12 @@
 <script setup lang="ts">
+import { useToastMessage } from '../composables/useToast';
 import { onMounted, onUnmounted, ref } from 'vue';
 import { useConfigStore } from '../stores/config';
 import { attachLiquidGlass } from '../features/appearance/liquidGlass';
 const emit = defineEmits<{ reset: [] }>();
 const store = useConfigStore();
 const dialog = ref<HTMLDialogElement | null>(null);
-const busy = ref(false), error = ref('');
+const busy = ref(false), error = useToastMessage('error');
 let removeGlass: (() => void) | undefined;
 function open() { error.value = ''; if (dialog.value && !dialog.value.open) { dialog.value.showModal(); dialog.value.focus({ preventScroll: true }); } }
 function cancel() { if (!busy.value) dialog.value?.close(); }
@@ -25,7 +26,7 @@ onUnmounted(() => { removeGlass?.(); dialog.value?.close(); });
     <h2 id="reset-title">⚠️ 重置配置</h2>
     <p id="reset-description">重置配置将会初始化所有设置，包括订阅生成、节点信息、反代配置等。此操作不可撤销，请谨慎操作。</p>
     <p class="reset-question"><strong>确定是否完全重置配置？</strong></p>
-    <p v-if="error" role="alert" class="reset-error">{{ error }}</p>
+
     <div class="reset-actions"><button type="button" class="confirm-reset" :disabled="busy" @click="reset">{{ busy ? '正在重置…' : '确定重置' }}</button><button type="button" class="secondary" :disabled="busy" @click="cancel">取消重置</button></div>
   </dialog>
 </template>

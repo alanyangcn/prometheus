@@ -112,7 +112,7 @@ export async function management(request: Request, env: WorkerEnv, runtime: Tunn
     }
     if (path === '/api/config') {
       const config: Configuration = await runtime.readConfig(env, id.host, id.uuid, request.headers.get('User-Agent') || 'null');
-      if (!write) return json(config);
+      if (!write) { record('Admin_Login'); return json(config); }
       const update = await body(request);
       if (!object(update)) throw new Error('配置必须是对象');
       validateConfig(update, config);

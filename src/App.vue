@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useToastMessage } from './composables/useToast';
 import { computed, ref, watch, onMounted, onUnmounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useTheme } from './composables/useTheme';
@@ -18,14 +19,14 @@ const interfaceStore = useInterfaceStore();
 const { mode } = storeToRefs(interfaceStore);
 const resetDialog = ref<InstanceType<typeof ResetConfiguration> | null>(null);
 const pageVersion = ref(0);
-const notice = ref('');
+const notice = useToastMessage('success');
 function configurationReset() { pageVersion.value++; notice.value = '配置已完全重置为默认值'; }
 const session = useSessionStore();
 const router = useRouter();
 const route = useRoute();
 watch(() => route.path, closeMobileMenu);
 const isLogin = computed(() => route.path === '/spark');
-const error = ref('');
+const error = useToastMessage('error');
 const { dark, toggleTheme } = useTheme();
 async function logout() {
   try { await session.logout(); await router.push('/spark'); }
@@ -56,15 +57,16 @@ async function logout() {
     </header>
     <nav v-if="!isLogin && session.state.authenticated" class="tabs" aria-label="管理导航">
       <RouterLink to="/Illumination">概览</RouterLink>
+      <RouterLink to="/Illumination/network">网络信息</RouterLink>
       <RouterLink to="/Illumination/settings">节点配置</RouterLink>
       <RouterLink to="/Illumination/subscription">优选订阅</RouterLink>
+      <RouterLink to="/Illumination/conversion">订阅转换</RouterLink>
       <RouterLink to="/Illumination/ech">ECH</RouterLink>
       <RouterLink to="/Illumination/cdn">Cloudflare CDN</RouterLink>
-      <RouterLink to="/Illumination/conversion">订阅转换</RouterLink>
       <RouterLink to="/Illumination/logs">日志</RouterLink>
     </nav>
-    <p v-if="error" role="alert" class="error">{{ error }}</p>
-    <p v-if="notice && !isLogin" role="status" class="success">{{ notice }}</p>
+
+
     <main :class="{ 'login-main': isLogin }"><RouterView :key="`${route.path}-${pageVersion}`" /></main>
     <ResetConfiguration ref="resetDialog" @reset="configurationReset" />
   </div>
@@ -115,7 +117,13 @@ main.login-main { padding: 0; }
 :global(:root[data-theme=dark] .illumination-shell > header .mobile-menu summary:hover) { background: #ffffff12; }
 :global(:root[data-theme=dark] .illumination-shell > header > nav > button.danger-reset) { color: #efa0a8; }
 @media (max-width: 600px) {
-  .illumination-shell > header > nav { gap: 6px; }
+  .illumination-shell > header > nav { gap: 5px; }
+  .illumination-shell > header > nav > button,
+  .illumination-shell > header > nav > button.theme-toggle,
+  .illumination-shell > header .mobile-menu summary { width: 36px; height: 36px; min-height: 36px; padding: 0; border-radius: 10px; }
+  .illumination-shell > header .theme-toggle svg { width: 18px; height: 18px; }
+  .mobile-menu-panel { padding: 8px; gap: 4px; }
+  .mobile-menu-panel button { padding: 10px; }
   .illumination-shell > header > nav > button.desktop-control { display: none; }
 }
 </style>

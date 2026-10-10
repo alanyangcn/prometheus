@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useToastMessage } from '../composables/useToast';
 import { onMounted, ref } from 'vue';
 import type { Configuration } from '../../shared/config';
 import { useConfigStore } from '../stores/config';
@@ -10,7 +11,7 @@ const store = useConfigStore();
 const draft = ref<Configuration | null>(null);
 const addresses = ref('');
 const savedAddresses = ref('');
-const busy = ref(false), error = ref(''), message = ref('');
+const busy = ref(false), error = useToastMessage('error'), message = useToastMessage('success');
 onMounted(async () => {
   try { const [config, list] = await Promise.all([store.load(), api<{text:string}>('/api/addresses')]); draft.value = snapshot(config); addresses.value = savedAddresses.value = list.text; }
   catch (cause) { error.value = cause instanceof Error ? cause.message : '加载失败'; }
@@ -37,11 +38,11 @@ async function save() {
 <template>
   <section class="management-page">
     <h1 class="page-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M4 12h10M4 17h7m7-3v7m-3-3 3 3 3-3" /></svg><span>优选订阅</span></h1>
-    <p v-if="error" role="alert" class="error">{{ error }}</p>
+
     <form v-if="draft" class="card" @submit.prevent="save">
       <fieldset class="subscription-fields" :disabled="busy"><PreferredSubscription :model="draft" v-model:addresses="addresses" /></fieldset>
       <div class="actions"><button :disabled="busy">{{ busy ? '保存中…' : '保存设置' }}</button><button type="button" class="secondary" :disabled="busy" @click="cancel">取消修改</button></div>
-      <p v-if="message" role="status" class="success">{{ message }}</p>
+
     </form>
   </section>
 </template>

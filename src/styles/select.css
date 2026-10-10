@@ -1,0 +1,107 @@
+/* Shared select triggers; glassSelect supplies the option popover. */
+:root :is(.illumination-shell, dialog.glass-dialog) select {
+  --select-surface: rgba(255,255,255,.35);
+  --select-edge: rgba(255,255,255,.7);
+  --select-ink: #3e526e;
+  --select-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24'%3E%3Cpath d='m7 10 5 5 5-5' fill='none' stroke='%23677f9e' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  appearance: none;
+  -webkit-appearance: none;
+  box-sizing: border-box;
+  min-height: 44px;
+  border: 1px solid var(--select-edge);
+  border-radius: 14px;
+  padding: 11px 46px 11px 14px;
+  color: var(--select-ink);
+  background-color: var(--select-surface);
+  background-image: var(--select-arrow);
+  background-repeat: no-repeat;
+  background-size: 16px 16px;
+  background-position: right 16px center;
+  box-shadow: inset 0 1px 2px #ffffff80,0 2px 6px #17304a05;
+  font-size: 13px;
+  line-height: 1.5;
+  text-overflow: ellipsis;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background-color .18s ease,border-color .18s ease,box-shadow .18s ease;
+}
+:root :is(.illumination-shell, dialog.glass-dialog) select:focus-visible {
+  outline: 2px solid #2785ed;
+  outline-offset: 3px;
+  border-color: #8eafe0;
+  box-shadow: inset 0 1px 2px #ffffff80,0 0 0 3px #5b94e523;
+}
+:root :is(.illumination-shell, dialog.glass-dialog) select:disabled { opacity: .45; cursor: not-allowed; }
+:root :is(.illumination-shell, dialog.glass-dialog) select option,
+:root :is(.illumination-shell, dialog.glass-dialog) select optgroup { background: #f3f6fb; color: #24334b; }
+:root[data-theme=dark] :is(.illumination-shell, dialog.glass-dialog) select {
+  --select-surface: rgba(255,255,255,.07);
+  --select-edge: rgba(255,255,255,.2);
+  --select-ink: #d4e0f2;
+  --select-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24'%3E%3Cpath d='m7 10 5 5 5-5' fill='none' stroke='%23a8b9d4' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  box-shadow: inset 0 1px 2px #ffffff20,0 2px 6px #00000012;
+}
+:root[data-theme=dark] :is(.illumination-shell, dialog.glass-dialog) select option,
+:root[data-theme=dark] :is(.illumination-shell, dialog.glass-dialog) select optgroup { background: #202a3c; color: #edf2fc; }
+@media(hover:hover) {
+  :root :is(.illumination-shell, dialog.glass-dialog) select:hover:not(:disabled) { border-color: #8eafe0; background-color: #ffffff66; }
+  :root[data-theme=dark] :is(.illumination-shell, dialog.glass-dialog) select:hover:not(:disabled) { background-color: #ffffff12; }
+}
+@media(prefers-reduced-motion:reduce) { :root :is(.illumination-shell, dialog.glass-dialog) select { transition: none; } }
+@media(prefers-reduced-transparency:reduce) {
+  :root :is(.illumination-shell, dialog.glass-dialog) select { --select-surface: #f3f6fb; }
+  :root[data-theme=dark] :is(.illumination-shell, dialog.glass-dialog) select { --select-surface: #202a3c; }
+}
+@media(forced-colors:active) {
+  :root :is(.illumination-shell, dialog.glass-dialog) select { appearance: auto; -webkit-appearance: auto; background-image: none; padding-right: 14px; box-shadow: none; }
+}
+/* Multi-select listboxes do not have an arrow. */
+:root :is(.illumination-shell, dialog.glass-dialog) select[multiple],
+:root :is(.illumination-shell, dialog.glass-dialog) select[size]:not([size='1']) { background-image: none; padding-right: 14px; }
+
+.glass-select-options {
+  position: fixed;
+  inset: auto;
+  margin: 0;
+  padding: 6px;
+  box-sizing: border-box;
+  border: 1px solid #ffffffb3;
+  border-radius: 18px;
+  background: rgba(245,249,255,.64);
+  color: #304460;
+  -webkit-backdrop-filter: blur(24px) saturate(1.5);
+  backdrop-filter: blur(24px) saturate(1.5);
+  box-shadow: 0 16px 48px #17304a26,inset 0 1px 2px #ffffffcc,inset 0 -1px 2px #ffffff66;
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  font: 13px/1.6 system-ui,sans-serif;
+}
+.glass-select-options::backdrop { background: transparent; }
+.glass-select-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 40px;
+  padding: 9px 12px;
+  border-radius: 12px;
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+.glass-select-option[hidden] { display: none; }
+.glass-select-option.highlighted { background: #3786ee16; }
+.glass-select-option[aria-selected=true] { color: #1473e4; background: #3786ee21; font-weight: 600; }
+.glass-select-option[aria-disabled=true] { opacity: .4; cursor: not-allowed; }
+.glass-select-check { flex-shrink: 0; visibility: hidden; font-weight: 700; }
+.glass-select-option[aria-selected=true] .glass-select-check { visibility: visible; }
+.glass-select-group { padding: 10px 12px 5px; font-size: 11px; font-weight: 600; color: #71849f; }
+:root[data-theme=dark] .glass-select-options { background: rgba(25,34,50,.78); color: #d5e1f3; border-color: #ffffff26; box-shadow: 0 16px 48px #00000055,inset 0 1px 2px #ffffff33,inset 0 -1px 2px #ffffff1a; }
+:root[data-theme=dark] .glass-select-option.highlighted { background: #6aa9ff1a; }
+:root[data-theme=dark] .glass-select-option[aria-selected=true] { color: #8fc0ff; background: #4b97ff26; }
+:root[data-theme=dark] .glass-select-group { color: #9cb0ce; }
+@media(pointer:coarse) { .glass-select-option { min-height: 44px; } }
+@media(prefers-reduced-transparency:reduce) {
+  .glass-select-options { background: #f3f6fb; backdrop-filter: none; -webkit-backdrop-filter: none; }
+  :root[data-theme=dark] .glass-select-options { background: #202a3c; }
+}

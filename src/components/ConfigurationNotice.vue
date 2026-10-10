@@ -1,11 +1,12 @@
 <script setup lang="ts">
+import { useToastMessage } from '../composables/useToast';
 import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue';
 import { attachLiquidGlass } from '../features/appearance/liquidGlass';
 import { useSessionStore } from '../stores/session';
 const session = useSessionStore();
 const dialog = ref<HTMLDialogElement | null>(null);
 const checking = ref(false);
-const error = ref('');
+const error = useToastMessage('error');
 const missing = ref<string[]>([]);
 const title = computed(() => missing.value.length > 1 ? '请先完成服务配置' : `需要设置 ${missing.value[0] || ''}`);
 async function checkConfiguration() {
@@ -32,13 +33,13 @@ onMounted(() => { if (dialog.value) removeGlass = attachLiquidGlass(dialog.value
 onUnmounted(() => removeGlass?.());
 </script>
 <template>
-  <p v-if="error" class="error" role="alert">{{ error }}</p>
+
   <dialog ref="dialog" class="configuration-dialog" tabindex="-1" autofocus aria-labelledby="configuration-title">
     <h2 id="configuration-title">{{ title }}</h2>
     <p v-if="missing.includes('ADMIN')">需要设置 <strong>ADMIN</strong> 参数，用作管理员密码。</p>
     <p v-if="missing.includes('KV')">需要设置 <strong>KV</strong>，绑定名称必须为 <code>KV</code>。</p>
     <p class="hint">配置完成后，点击“重新检查”确认配置状态。</p>
-    <p v-if="error" class="error" role="alert">{{ error }}</p>
+
     <div class="actions"><button type="button" :disabled="checking" @click="checkConfiguration">{{ checking ? '检查中…' : '重新检查' }}</button><button type="button" class="secondary" @click="dialog?.close()">知道了</button></div>
   </dialog>
 </template>

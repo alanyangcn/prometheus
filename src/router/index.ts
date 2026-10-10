@@ -7,6 +7,7 @@ const router = createRouter({
     { path: '/setup', redirect: '/spark' },
     { path: '/spark', component: () => import('../views/LoginView.vue') },
     { path: '/Illumination', component: () => import('../views/DashboardView.vue'), meta: { authenticated: true } },
+    { path: '/Illumination/network', component: () => import('../views/NetworkView.vue'), meta: { authenticated: true } },
     { path: '/Illumination/settings', component: () => import('../views/SettingsView.vue'), meta: { authenticated: true } },
     { path: '/Illumination/subscription', component: () => import('../views/SubscriptionView.vue'), meta: { authenticated: true } },
     { path: '/Illumination/conversion', component: () => import('../views/ConversionView.vue'), meta: { authenticated: true } },

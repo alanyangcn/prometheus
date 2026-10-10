@@ -17,9 +17,9 @@ runtime.recordLog = async function 请求日志记录(env, request, 访问IP, �
                 if (!Array.isArray(日志数组)) {
                     日志数组 = [日志内容];
                 }
-                else if (请求类型 !== "Get_SUB") {
+                else if (请求类型 === "Admin_Login") {
                     const 三十分钟前时间戳 = 当前时间.getTime() - 30 * 60 * 1000;
-                    if (日志数组.some(log => log.TYPE !== "Get_SUB" && log.IP === 访问IP && log.URL === runtime.redactUrl(request.url) && log.UA === (request.headers.get('User-Agent') || 'Unknown') && log.TIME >= 三十分钟前时间戳))
+                    if (日志数组.some(log => log.TYPE === "Admin_Login" && log.IP === 访问IP && log.URL === runtime.redactUrl(request.url) && log.UA === (request.headers.get('User-Agent') || 'Unknown') && log.TIME >= 三十分钟前时间戳))
                         return;
                     日志数组.push(日志内容);
                     while (JSON.stringify(日志数组, null, 2).length > KV容量限制 * 1024 * 1024 && 日志数组.length > 0)
