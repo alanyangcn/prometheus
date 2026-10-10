@@ -7,3 +7,7 @@ Upstream credits include zizifn/edgetunnel, 3Kmfi6HP/EDtunnel, SHIJS1999/cloudfl
 Vue, Vue Router, Pinia, Vite, Cloudflare development tools and their transitive dependencies retain their respective package licenses.
 
 Production browser bundle transformation uses javascript-obfuscator as a development dependency (BSD-2-Clause license). Its package and transitive dependencies retain their own licenses; it is not bundled as a runtime dependency.
+
+Local QR generation uses node-qrcode (`qrcode`, MIT license). Subscription links are rendered in the browser without sending their tokens to an external QR service.
+
+Management workflow compatibility is derived from the edgetunnel administration interface. Public proxy/catalogue/preset lists and optional Snippet exports retain their upstream ownership; the UI links their sources. A generated upstream Snippet is separate from this application's modular Worker and requires its upstream license to be preserved.

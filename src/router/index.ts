@@ -11,6 +11,8 @@ const router = createRouter({
     { path: '/admin/settings', component: () => import('../views/SettingsView.vue'), meta: { authenticated: true } },
     { path: '/admin/addresses', component: () => import('../views/AddressesView.vue'), meta: { authenticated: true } },
     { path: '/admin/proxies', component: () => import('../views/ProxiesView.vue'), meta: { authenticated: true } },
+    { path: '/admin/tools', component: () => import('../views/ToolsView.vue'), meta: { authenticated: true } },
+    { path: '/admin/optimize', component: () => import('../views/OptimizeView.vue'), meta: { authenticated: true } },
     { path: '/admin/logs', component: () => import('../views/LogsView.vue'), meta: { authenticated: true } },
     { path: '/admin/integrations', component: () => import('../views/IntegrationsView.vue'), meta: { authenticated: true } },
     { path: '/:pathMatch(.*)*', redirect: '/' },

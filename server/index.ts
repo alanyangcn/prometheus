@@ -21,7 +21,7 @@ export default {
       const upgrade = request.headers.get('Upgrade')?.toLowerCase() === 'websocket';
       const tunnel = upgrade || (request.method === 'POST' && !url.pathname.startsWith('/admin/') && url.pathname !== '/login');
       if (tunnel && !administrator(env)) return Response.json({ error: '请先配置 ADMIN' }, { status: 503 });
-      const localPages = ['/', '/login', '/admin', '/setup', '/admin/settings', '/admin/addresses', '/admin/proxies', '/admin/logs', '/admin/integrations'];
+      const localPages = ['/', '/login', '/admin', '/setup', '/admin/settings', '/admin/addresses', '/admin/proxies', '/admin/logs', '/admin/integrations', '/admin/tools', '/admin/optimize'];
       if (!tunnel && localPages.includes(url.pathname)) return serveApp(request, url.pathname);
       // All management routes remain protected, including legacy diagnostics.
       if (url.pathname.startsWith('/admin/') && !await authenticated(runtime, request, env)) return Response.json({ error: '请先登录' }, { status: 401 });

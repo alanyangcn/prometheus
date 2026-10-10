@@ -42,3 +42,17 @@ button:disabled { opacity: .6; cursor: wait; }
 .copy-row button { flex-shrink: 0; }
 pre { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 13px; background: #f1f5f9; border-radius: 8px; padding: 16px; max-height: 400px; overflow: auto; }
 .login { max-width: 480px; }
+
+:root[data-theme=dark] { color-scheme: dark; color: #e2e8f0; background: #0f172a; }
+:root[data-theme=dark] .brand { color: #f1f5f9; }
+:root[data-theme=dark] a { color: #a5b4fc; }
+:root[data-theme=dark] .card { background: #1e293b; border-color: #475569; }
+:root[data-theme=dark] header, :root[data-theme=dark] .tabs, :root[data-theme=dark] .config-group { border-color: #475569; }
+:root[data-theme=dark] input:not([type=checkbox]), :root[data-theme=dark] textarea, :root[data-theme=dark] select { background: #0f172a; border-color: #64748b; }
+:root[data-theme=dark] pre, :root[data-theme=dark] input:disabled, :root[data-theme=dark] .secondary { background: #334155; color: #e2e8f0; }
+:root[data-theme=dark] .secondary:hover { background: #475569; }
+:root[data-theme=dark] .hint, :root[data-theme=dark] .intro, :root[data-theme=dark] .brand span { color: #cbd5e1; }
+:root[data-theme=dark] .eyebrow { color: #a5b4fc; }
+:root[data-theme=dark] .error { color: #fecaca; background: #450a0a; }
+:root[data-theme=dark] .success { color: #86efac; }
+@media (max-width: 600px) { .shell { padding: 0 16px; } .card { padding: 20px; } nav { gap: 12px; } .copy-row { flex-wrap: wrap; } }

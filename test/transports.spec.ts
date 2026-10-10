@@ -62,3 +62,44 @@ describe('Transport compatibility and connection isolation', () => {
     client.close();
   });
 });
+
+for (const transport of ['grpc', 'xhttp'] as const) {
+  it(`relays VLESS payload through actual ${transport} streaming handler`, async () => {
+    const targets: unknown[] = []; const writes: number[][] = [];
+    const runtime = createRuntime({ socketConnect: ((target: unknown) => {
+      targets.push(target);
+      return {
+        readable: new ReadableStream<Uint8Array>({ start(c) { c.enqueue(new Uint8Array([11, 12])); c.close(); } }),
+        writable: new WritableStream<Uint8Array>({ write(chunk) { writes.push([...chunk]); } }),
+        opened: Promise.resolve({}), closed: new Promise(() => {}), close() {},
+      };
+    }) as any });
+    runtime.TCP并发拨号数 = 1;
+    let input!: ReadableStreamDefaultController<Uint8Array>;
+    const body = new ReadableStream<Uint8Array>({ start(c) { input = c; } });
+    const raw = packet();
+    const frame = transport === 'grpc' ? new Uint8Array([0, 0, 0, 0, raw.length + 2, 10, raw.length, ...raw]) : raw;
+    input.enqueue(frame.slice(0, 4)); input.enqueue(frame.slice(4));
+    const request = new Request('https://example.com/tunnel', { method: 'POST', body });
+    const response = transport === 'grpc' ? await runtime.handleGrpc(request, UUID, {}) : await runtime.handleXhttp(request, UUID, {});
+    expect(response.status).toBe(200);
+    const reader = response.body!.getReader();
+    const payload: number[] = []; let pending: number[] = [];
+    while (payload.length < 4) {
+      const chunk = await reader.read(); expect(chunk.done).toBe(false);
+      if (transport === 'xhttp') payload.push(...chunk.value!);
+      else {
+        pending.push(...chunk.value!);
+        while (pending.length >= 5) {
+          const length = pending[1] * 2 ** 24 + pending[2] * 2 ** 16 + pending[3] * 256 + pending[4];
+          if (pending.length < 5 + length) break;
+          payload.push(...pending.slice(7, 5 + length)); pending = pending.slice(5 + length);
+        }
+      }
+    }
+    expect(payload).toEqual([0, 0, 11, 12]);
+    expect(targets[0]).toEqual({ hostname: '1.2.3.4', port: 443 });
+    expect(writes.some(x => x.join(',') === '7,8')).toBe(true);
+    input.close(); await reader.cancel();
+  });
+}

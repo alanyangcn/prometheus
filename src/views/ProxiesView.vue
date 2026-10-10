@@ -1,20 +1,41 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { computed, onBeforeUnmount, ref } from 'vue';
 import { api } from '../api/client';
-const type = ref('socks5'); const address = ref(''); const result = ref<unknown>(null); const error = ref(''); const busy = ref(false);
-async function check() {
-  busy.value = true; error.value = ''; result.value = null;
-  try { result.value = await api(`/api/proxy-check`, { type: type.value, address: address.value }); }
-  catch (e) { error.value = e instanceof Error ? e.message : '检测失败'; }
-  finally { busy.value = false; }
+import { RequestScope } from '../features/tools/requests';
+import { parseChainInput } from '../features/tools/chain';
+import { proxyConfiguration, proxyIPConfiguration, type DirectoryEntry, type ProxyResult } from '../features/tools/proxies';
+const type = ref('socks5'), address = ref(''), result = ref<ProxyResult | null>(null), error = ref(''), message = ref(''), busy = ref(false), global = ref(false);
+const checked = ref(''), directoryType = ref('socks5'), entries = ref<DirectoryEntry[]>([]), country = ref(''), search = ref(''), selectedIPs = ref<string[]>([]);
+const results = ref<Record<string, ProxyResult>>({}), verifying = ref(false); let controller: AbortController | null = null;
+const requests = new RequestScope();
+const key = computed(() => `${type.value}:${address.value}`);
+const countries = computed(() => [...new Set(entries.value.map(item => item.country))].sort());
+const filtered = computed(() => entries.value.filter(item => (!country.value || item.country === country.value) && (!search.value || `${item.address} ${item.countryName} ${item.city} ${item.organization}`.toLowerCase().includes(search.value.toLowerCase()))).sort((a,b) => Number(results.value[b.address]?.success || false) - Number(results.value[a.address]?.success || false) || (results.value[a.address]?.responseTime || Infinity) - (results.value[b.address]?.responseTime || Infinity)));
+async function run(action: () => Promise<void>) { busy.value = true; error.value = ''; message.value = ''; try { await action(); } catch (e) { error.value = e instanceof Error ? e.message : '请求失败'; } finally { busy.value = false; } }
+async function check() { const input = parseChainInput(address.value, type.value); type.value = input.scheme; address.value = input.address; checked.value = ''; const current = key.value; await run(async () => { const value = await api<ProxyResult>('/api/proxy-check', {type:type.value,address:address.value}); result.value = value; if (value.success && current === key.value) checked.value = current; else throw new Error(value.error || '检测失败'); }); }
+async function apply() { await run(async () => { if (checked.value !== key.value) throw new Error('请重新验证当前代理'); await api('/api/config', proxyConfiguration(type.value,address.value,global.value)); message.value = '代理已写入配置'; }); }
+function stop() { controller?.abort(); controller = null; requests.cancel(); verifying.value = false; }
+function resetDirectory() { stop(); entries.value = []; selectedIPs.value = []; results.value = {}; country.value = ''; search.value = ''; }
+async function load() {
+  resetDirectory(); busy.value = true; error.value = ''; message.value = '';
+  const kind = directoryType.value, pending = requests.request(8000);
+  try { const response = await fetch('/api/tools/proxy-directory', {method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify({type:kind}),signal:pending.signal}); const value = await response.json(); if (!pending.current()) return; if (!response.ok) throw new Error(value.error || '加载目录失败'); if (!Array.isArray(value)) throw new Error('目录响应无效'); entries.value = value; }
+  catch (e) { if (pending.matches()) error.value = pending.signal.aborted ? '目录请求超时' : e instanceof Error ? e.message : '加载失败'; }
+  finally { if (pending.matches()) busy.value = false; pending.close(); }
 }
+async function verifyEntry(item: DirectoryEntry, signal?: AbortSignal, kind = directoryType.value, generation = requests.generation) {
+  const pending = requests.request(12000,signal,generation), input = parseChainInput(item.address,kind);
+  try { const response = await fetch(kind === 'proxyip' ? '/api/tools/proxyip-check' : '/api/proxy-check', {method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify(kind === 'proxyip' ? {address:item.address} : {type:input.scheme,address:input.address}),signal:pending.signal}); const value = await response.json() as ProxyResult & {error?: string}; if (pending.current()) results.value[item.address] = response.ok ? value : {success:false,error:value.error || '检测失败'}; }
+  catch { if (pending.matches() && !signal?.aborted) results.value[item.address] = {success:false,error:'连接失败或超时'}; }
+  finally { pending.close(); }
+}
+async function verifyRegion() { stop(); controller = new AbortController(); const signal = controller.signal, generation = requests.generation, kind = directoryType.value; verifying.value = true; const items = [...filtered.value]; let index = 0; await Promise.all(Array.from({length:Math.min(8,items.length)},async () => { while (!signal.aborted && index < items.length) await verifyEntry(items[index++]!,signal,kind,generation); })); if (controller?.signal === signal) { controller = null; verifying.value = false; } }
+async function useEntry(item: DirectoryEntry) { const input = parseChainInput(item.address,item.protocol || directoryType.value); type.value = input.scheme; address.value = input.address; result.value = results.value[item.address] || null; checked.value = result.value?.success ? key.value : ''; if (!checked.value) await check(); }
+async function applyIPs() { await run(async () => { if (selectedIPs.value.some(ip => !results.value[ip]?.success)) throw new Error('所选 PROXYIP 必须全部验证成功'); await api('/api/config',proxyIPConfiguration(selectedIPs.value)); message.value = '所选 PROXYIP 已写入配置，账号代理已关闭'; }); }
+onBeforeUnmount(stop);
 </script>
 <template>
-  <h1>代理检测</h1><p class="intro">检查自有上游代理的连接状态。账号和密码不会写入浏览器地址栏。</p>
-  <form class="card" @submit.prevent="check">
-    <label for="proxy-type">代理类型</label><select id="proxy-type" v-model="type"><option v-for="item in ['socks5', 'http', 'https', 'turn', 'sstp']" :key="item">{{ item }}</option></select>
-    <label for="proxy-address">代理地址</label><input id="proxy-address" v-model="address" type="password" autocomplete="off" placeholder="user:password@host:port" required />
-    <button :disabled="busy">{{ busy ? '检测中…' : '开始检测' }}</button>
-    <p v-if="error" role="alert" class="error">{{ error }}</p><pre v-if="result">{{ JSON.stringify(result, null, 2) }}</pre>
-  </form>
+<h1>代理检测与目录</h1><p class="intro">代理检测由服务端执行。公共目录来自第三方，需验证后使用；账号输入不会写入浏览器地址栏。</p>
+<form class="card" @submit.prevent="check"><h2>自有代理</h2><label for="proxy-type">代理类型</label><select id="proxy-type" v-model="type"><option v-for="item in ['socks5','http','https','turn','sstp']" :key="item">{{ item }}</option></select><label for="proxy-address">代理地址</label><input id="proxy-address" v-model="address" type="password" autocomplete="off" placeholder="user:password@host:port" required /><label for="proxy-global"><input id="proxy-global" v-model="global" type="checkbox" />全局代理</label><div class="actions"><button :disabled="busy">检测代理</button><button type="button" :disabled="busy || checked !== key" @click="apply">应用到配置</button></div><dl v-if="result"><template v-for="field in ['success','ip','loc','responseTime','error'] as const" :key="field"><dt>{{ field }}</dt><dd>{{ result[field] ?? '—' }}</dd></template></dl></form>
+<section class="card"><h2>公共代理目录</h2><label for="directory-type">目录类型</label><select id="directory-type" v-model="directoryType" :disabled="busy || verifying" @change="resetDirectory"><option v-for="item in ['socks5','http','https','proxyip']" :key="item">{{ item }}</option></select><button :disabled="busy" @click="load">加载目录</button><label for="directory-country">国家/地区</label><select id="directory-country" v-model="country"><option value="">全部国家</option><option v-for="item in countries" :key="item">{{ item }}</option></select><label for="directory-search">筛选地址/城市/运营商</label><input id="directory-search" v-model="search" /><div class="actions"><button :disabled="busy || verifying || !filtered.length" @click="verifyRegion">验证筛选结果</button><button :disabled="!verifying" class="secondary" @click="stop">停止验证</button><button v-if="directoryType === 'proxyip'" :disabled="busy || !selectedIPs.length" @click="applyIPs">应用所选 PROXYIP</button></div><p>{{ filtered.length }} 条；{{ selectedIPs.length }} 个 PROXYIP 已选</p><div style="max-height:36rem;overflow:auto"><article v-for="item in filtered" :key="item.address" class="card"><label v-if="directoryType === 'proxyip'"><input v-model="selectedIPs" :value="item.address" type="checkbox" :disabled="!results[item.address]?.success" :aria-label="`选择 ${item.address}`" />{{ item.address }}</label><p v-else>{{ parseChainInput(item.address, item.protocol).address.replace(/^[^@]+@/, '***@') }}</p><p>{{ item.countryName }} · {{ item.city }} · {{ item.organization }}</p><p v-if="results[item.address]">{{ results[item.address]?.success ? '验证成功' : '验证失败' }} · {{ results[item.address]?.responseTime ?? '—' }} ms <span v-if="directoryType === 'proxyip'">IPv4 {{ results[item.address]?.supports_ipv4 ? '支持' : '不支持' }} / IPv6 {{ results[item.address]?.supports_ipv6 ? '支持' : '不支持' }}</span></p><div class="actions"><button :disabled="busy || verifying" @click="verifyEntry(item)">验证</button><button v-if="directoryType !== 'proxyip'" :disabled="busy || !results[item.address]?.success" @click="useEntry(item)">选择已验证代理</button></div></article></div></section><p v-if="error" role="alert" class="error">{{ error }}</p><p v-if="message" role="status" class="success">{{ message }}</p>
 </template>

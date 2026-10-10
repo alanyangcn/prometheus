@@ -129,3 +129,20 @@ it('serves scripts at their original path before ADMIN has been configured', asy
   }
   expect(paths).toEqual(['/src/main.ts', '/@vite/client', '/assets/index.js']);
 });
+
+it('protects all tool APIs and rejects cross-origin tool writes', async () => {
+  const f = fixture();
+  expect((await f.request('/api/tools/converter-check', { baseURL: 'https://example.com' })).status).toBe(401);
+  const cookie = await login(f);
+  expect((await f.request('/api/tools/converter-check', { baseURL: 'https://example.com' }, cookie, 'https://other.example')).status).toBe(403);
+  expect((await f.request('/api/tools/missing', {}, cookie)).status).toBe(404);
+});
+
+it('saves optional ECH SNI and an explicitly selected upstream proxy without changing identity', async () => {
+  const f = fixture(); const cookie = await login(f);
+  const saved = await f.request('/api/config', { ECHConfig: { SNI: null }, gRPCUserAgent: 'custom-client', 反代: { SOCKS5: { 启用: 'https', 账号: 'user:pass@proxy.example:443', 全局: true } } }, cookie);
+  expect(saved.status).toBe(200);
+  const data = JSON.parse(f.data.get('config.json')!);
+  expect(data.ECHConfig.SNI).toBeNull(); expect(data.gRPCUserAgent).toBe('custom-client');
+  expect(data.反代.SOCKS5.启用).toBe('https'); expect(data.UUID).toBe(f.env.UUID);
+});

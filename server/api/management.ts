@@ -1,3 +1,4 @@
+import { tools } from './tools';
 import type { WorkerEnv } from '../env';
 import type { TunnelRuntime } from '../types';
 import type { Configuration, JsonValue } from '../../shared/config';
@@ -18,6 +19,7 @@ const aliases: Record<string, string> = {
   '/admin/tg.json': '/api/integrations/telegram', '/admin/cf.json': '/api/integrations/cloudflare',
 };
 function validateShape(value: JsonValue, model: JsonValue, location = 'config'): void {
+  if (value === null && ['config.ECHConfig.SNI', 'config.TLS分片', 'config.优选订阅生成.SUB', 'config.反代.SOCKS5.启用'].includes(location)) return;
   if (Array.isArray(model)) {
     if (!Array.isArray(value) || value.some(x => typeof x !== 'string')) throw new Error(`${location} 必须是字符串数组`);
   } else if (object(model)) {
@@ -80,7 +82,7 @@ export async function management(request: Request, env: WorkerEnv, runtime: Tunn
     return json({ success: true }, 200, { 'Set-Cookie': cookie(request, '') });
   }
   const known = ['/api/config', '/api/config/reset', '/api/addresses', '/api/logs', '/api/integrations/telegram', '/api/integrations/cloudflare', '/api/proxy-check'];
-  if (!known.includes(path)) return null;
+  if (!known.includes(path) && !path.startsWith('/api/tools/')) return null;
   if (!await authenticated(runtime, request, env)) return json({ error: '请先登录' }, 401);
   if (!env.KV) return json({ error: '请绑定 KV 命名空间' }, 503);
   const id = await identity(runtime, env, url.hostname);
@@ -91,6 +93,7 @@ export async function management(request: Request, env: WorkerEnv, runtime: Tunn
     })().catch(() => {}));
   };
   try {
+    if (path.startsWith('/api/tools/')) return tools(request, env, runtime, ctx);
     if (path === '/api/proxy-check') {
       if (!write) return json({ error: '请使用 POST' }, 405);
       const data = await body(request);
