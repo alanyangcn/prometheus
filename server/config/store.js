@@ -84,25 +84,6 @@ runtime.readConfig = async function 读取config_JSON(env, hostname, userID, UA 
                 },
             },
         },
-        TG: {
-            启用: false,
-            BotToken: null,
-            ChatID: null,
-        },
-        CF: {
-            Email: null,
-            GlobalAPIKey: null,
-            AccountID: null,
-            APIToken: null,
-            UsageAPI: null,
-            Usage: {
-                success: false,
-                pages: 0,
-                workers: 0,
-                total: 0,
-                max: 100000,
-            },
-        }
     };
     try {
         let configJSON = await env.KV.get('config.json');
@@ -219,55 +200,9 @@ runtime.readConfig = async function 读取config_JSON(env, hostname, userID, UA 
         ? `${runtime.config_JSON.协议类型}://${btoa(runtime.config_JSON.SS.加密方式 + ':' + userID)}@${host}:${runtime.config_JSON.SS.TLS ? '443' : '80'}?plugin=v2${encodeURIComponent(`ray-plugin;mode=websocket;host=${host};path=${((runtime.config_JSON.完整节点路径.includes('?') ? runtime.config_JSON.完整节点路径.replace('?', '?enc=' + runtime.config_JSON.SS.加密方式 + '&') : (runtime.config_JSON.完整节点路径 + '?enc=' + runtime.config_JSON.SS.加密方式)) + (runtime.config_JSON.SS.TLS ? ';tls' : ''))};mux=0`) + ECHLINK参数}#${encodeURIComponent(runtime.config_JSON.优选订阅生成.SUBNAME)}`
         : `${runtime.config_JSON.协议类型}://${userID}@${host}:443?security=tls&type=${传输协议 + ECHLINK参数}&${域名字段名}=${host}&fp=${runtime.config_JSON.Fingerprint}&sni=${host}&${路径字段名}=${encodeURIComponent(传输路径参数值) + TLS分片参数}&encryption=none#${encodeURIComponent(runtime.config_JSON.优选订阅生成.SUBNAME)}`;
     runtime.config_JSON.优选订阅生成.TOKEN = await runtime.hashIdentity(hostname + userID);
-    const 初始化TG_JSON = { BotToken: null, ChatID: null };
-    runtime.config_JSON.TG = { 启用: runtime.config_JSON.TG.启用 ? runtime.config_JSON.TG.启用 : false, ...初始化TG_JSON };
-    try {
-        const TG_TXT = await env.KV.get('tg.json');
-        if (!TG_TXT) {
-            await env.KV.put('tg.json', JSON.stringify(初始化TG_JSON, null, 2));
-        }
-        else {
-            const TG_JSON = JSON.parse(TG_TXT);
-            runtime.config_JSON.TG.ChatID = TG_JSON.ChatID ? TG_JSON.ChatID : null;
-            runtime.config_JSON.TG.BotToken = TG_JSON.BotToken ? runtime.掩码敏感信息(TG_JSON.BotToken) : null;
-        }
-    }
-    catch (error) {
-        console.error(`读取tg.json出错: ${error.message}`);
-    }
-    const 初始化CF_JSON = { Email: null, GlobalAPIKey: null, AccountID: null, APIToken: null, UsageAPI: null };
-    runtime.config_JSON.CF = { ...初始化CF_JSON, Usage: { success: false, pages: 0, workers: 0, total: 0, max: 100000 } };
-    try {
-        const CF_TXT = await env.KV.get('cf.json');
-        if (!CF_TXT) {
-            await env.KV.put('cf.json', JSON.stringify(初始化CF_JSON, null, 2));
-        }
-        else {
-            const CF_JSON = JSON.parse(CF_TXT);
-            if (CF_JSON.UsageAPI) {
-                try {
-                    const response = await fetch(CF_JSON.UsageAPI);
-                    const Usage = await response.json();
-                    runtime.config_JSON.CF.Usage = Usage;
-                }
-                catch (err) {
-                    console.error(`请求 CF_JSON.UsageAPI 失败: ${err.message}`);
-                }
-            }
-            else {
-                runtime.config_JSON.CF.Email = CF_JSON.Email ? CF_JSON.Email : null;
-                runtime.config_JSON.CF.GlobalAPIKey = CF_JSON.GlobalAPIKey ? runtime.掩码敏感信息(CF_JSON.GlobalAPIKey) : null;
-                runtime.config_JSON.CF.AccountID = CF_JSON.AccountID ? runtime.掩码敏感信息(CF_JSON.AccountID) : null;
-                runtime.config_JSON.CF.APIToken = CF_JSON.APIToken ? runtime.掩码敏感信息(CF_JSON.APIToken) : null;
-                runtime.config_JSON.CF.UsageAPI = null;
-                const Usage = await runtime.getCloudflareUsage(CF_JSON.Email, CF_JSON.GlobalAPIKey, CF_JSON.AccountID, CF_JSON.APIToken);
-                runtime.config_JSON.CF.Usage = Usage;
-            }
-        }
-    }
-    catch (error) {
-        console.error(`读取cf.json出错: ${error.message}`);
-    }
+    // Discard obsolete integration fields from existing configuration records.
+    delete runtime.config_JSON.TG;
+    delete runtime.config_JSON.CF;
     runtime.config_JSON.加载时间 = (performance.now() - 初始化开始时间).toFixed(2) + 'ms';
     return runtime.config_JSON;
 };

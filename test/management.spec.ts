@@ -53,13 +53,7 @@ describe('Authenticated local management', () => {
     expect((await f.request('/api/config', { 协议类型: 'invalid' }, cookie)).status).toBe(400);
     expect((await f.request('/api/config', { 协议类型: 'trojan' }, cookie, 'https://other.example')).status).toBe(403);
   });
-  it('preserves credential values and masks them in config responses', async () => {
-    const f = fixture(); const cookie = await login(f);
-    expect((await f.request('/api/integrations/telegram', { BotToken: '123456:SECRET', ChatID: '123456' }, cookie)).status).toBe(200);
-    const config = await (await f.request('/api/config', undefined, cookie)).json() as any;
-    expect(config.TG.BotToken).not.toBe('123456:SECRET');
-    expect(JSON.parse(f.data.get('tg.json')!).BotToken).toBe('123456:SECRET');
-  });
+
   it('roundtrips address lists and supports legacy config URLs', async () => {
     const f = fixture(); const cookie = await login(f);
     expect((await f.request('/api/addresses', { text: 'example.com:443#test' }, cookie)).status).toBe(200);
@@ -107,12 +101,7 @@ it('serves development JavaScript without forcing localhost HTTPS', async () => 
   expect(response.headers.get('Content-Type')).toBe('text/javascript');
 });
 
-it('persists the Telegram enable switch without overwriting stored credentials', async () => {
-  const f = fixture(); const cookie = await login(f);
-  const response = await f.request('/api/config', { TG: { 启用: true } }, cookie);
-  expect(response.status).toBe(200);
-  expect(JSON.parse(f.data.get('config.json')!).TG.启用).toBe(true);
-});
+
 
 it('serves scripts at their original path before ADMIN has been configured', async () => {
   const paths: string[] = [];

@@ -1,4 +1,5 @@
 export interface WorkerEnv {
+  ADMIN_PATH?: string;
   KV?: KVNamespace;
   ASSETS?: Fetcher;
   ADMIN?: string; admin?: string; PASSWORD?: string; password?: string; pswd?: string; TOKEN?: string;

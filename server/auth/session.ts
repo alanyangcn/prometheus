@@ -30,6 +30,6 @@ export async function authenticated(runtime: TunnelRuntime, request: Request, en
   return !!cookie && equals(cookie, await authToken(runtime, request, env));
 }
 export function cookie(request: Request, token: string): string {
-  const local = ['localhost', '127.0.0.1'].includes(new URL(request.url).hostname);
-  return `auth=${token}; Path=/; Max-Age=${token ? 86400 : 0}; HttpOnly; ${local ? '' : 'Secure; '}SameSite=Lax`;
+  const secure = new URL(request.url).protocol === 'https:';
+  return `auth=${token}; Path=/; Max-Age=${token ? 86400 : 0}; HttpOnly; ${secure ? 'Secure; ' : ''}SameSite=Lax`;
 }

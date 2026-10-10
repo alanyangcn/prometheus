@@ -1,18 +1,62 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref } from 'vue';
-import { networkSources, probeNetwork, latencySites, latencyLoop, type NetworkResult } from './network';
-import { maskIP } from './ip';
-const privateDisplay = ref(true), probing = ref(false), running = ref(false), samples = ref(20);
-const results = ref<Record<string,NetworkResult>>({}), measurements = ref<Record<string,(number|null)[]>>({});
-let networkController: AbortController | null = null, latencyController: AbortController | null = null;
-const groups = computed(() => [...new Set(networkSources.map(source => source.group))]);
-function stopNetwork() { networkController?.abort(); networkController = null; probing.value = false; }
-function stopLatency() { latencyController?.abort(); latencyController = null; running.value = false; }
-async function startNetwork() { stopNetwork(); const controller = new AbortController(); networkController = controller; probing.value = true; results.value = {}; await Promise.all(networkSources.map(async source => { const value = await probeNetwork(source,controller.signal); if (!controller.signal.aborted) results.value[source.name] = value; })); if (networkController === controller) { networkController = null; probing.value = false; } }
-async function startLatency() { stopLatency(); const controller = new AbortController(); latencyController = controller; running.value = true; measurements.value = {}; const count = Math.max(1,Math.min(100,Math.floor(Number(samples.value) || 20))); await Promise.all(latencySites.map(site => { measurements.value[site.name] = []; return latencyLoop(site.url,count,controller.signal,value => measurements.value[site.name]!.push(value)); })); if (latencyController === controller) { latencyController = null; running.value = false; } }
-function summary(values: (number|null)[] = []) { const successful = values.filter((n):n is number => n !== null); return successful.length ? `${Math.round(successful.reduce((a,b) => a+b,0)/successful.length)} ms · ${values.length-successful.length}/${values.length} 失败` : `${values.length} 次失败`; }
-function graph(values: (number|null)[] = []) { const valid = values.filter((n):n is number => n !== null), max = Math.max(1,...valid); return values.map((value,index) => `${index*200/Math.max(1,values.length-1)},${value === null ? 48 : 48-(value/max)*44}`).join(' '); }
-onBeforeUnmount(() => { stopNetwork(); stopLatency(); });
+import { onMounted, onBeforeUnmount, ref } from 'vue';
+import { latencySites, latencyLoop } from './network';
+const running = ref(false);
+const samples = 20;
+const measurements = ref<Record<string, (number | null)[]>>({});
+let controller: AbortController | undefined;
+function stop() { controller?.abort(); controller = undefined; running.value = false; }
+async function start() {
+  stop(); const current = new AbortController(); controller = current;
+  running.value = true; measurements.value = {};
+  const count = Math.max(1, Math.min(100, samples));
+  await Promise.all(latencySites.map(site => {
+    measurements.value[site.name] = [];
+    return latencyLoop(site.url, count, current.signal, value => { if (!current.signal.aborted) measurements.value[site.name]!.push(value); });
+  }));
+  if (controller === current) { controller = undefined; running.value = false; }
+}
+function latest(name: string) { return measurements.value[name]?.at(-1); }
+function tone(name: string) { const value = latest(name); return value == null ? 'unavailable' : value < 100 ? 'fast' : value < 200 ? 'moderate' : 'slow'; }
+function graph(name: string) {
+  const values = measurements.value[name] || [], max = Math.max(150, ...values.filter((v): v is number => v !== null));
+  let drawing = false;
+  return values.map((value, index) => {
+    if (value === null) { drawing = false; return ''; }
+    const command = drawing ? 'L' : 'M'; drawing = true;
+    return `${command}${index * 400 / Math.max(1, samples - 1)},${48 - value / max * 40}`;
+  }).join(' ');
+}
+onMounted(() => { void start(); });
+onBeforeUnmount(stop);
 </script>
-<template><section class="card"><h2>浏览器网络诊断</h2><p class="hint">从当前浏览器直连参考测试源，显示国内、海外、Cloudflare IPv4/IPv6 和墙外出口。测试源可能因网络或跨域策略失败。</p><label for="network-private"><input id="network-private" v-model="privateDisplay" type="checkbox" />隐藏出口 IP 和位置</label><div class="actions"><button :disabled="probing" @click="startNetwork">检测各网络出口</button><button :disabled="!probing" class="secondary" @click="stopNetwork">停止出口检测</button></div><section v-for="group in groups" :key="group"><h3>{{ group }}</h3><dl><template v-for="source in networkSources.filter(item => item.group === group)" :key="source.name"><dt>{{ source.name }}</dt><dd v-if="results[source.name]?.success">{{ privateDisplay ? maskIP(results[source.name]!.ip || '') : results[source.name]!.ip }} · {{ privateDisplay ? '位置已隐藏' : results[source.name]!.location || '未知位置' }} · {{ results[source.name]!.version }} · {{ results[source.name]!.duration }} ms</dd><dd v-else>{{ results[source.name]?.error || (probing ? '检测中…' : '待检测') }}</dd></template></dl></section></section>
-<section class="card"><h2>站点延迟</h2><p class="hint">按参考站点循环执行浏览器 HEAD 请求，记录实际完成耗时。跨域响应采用 no-cors；结果表示连接请求耗时，不能确认站点业务可用性。</p><label for="latency-samples">每个站点采样次数（1–100）</label><input id="latency-samples" v-model.number="samples" type="number" min="1" max="100" /><div class="actions"><button :disabled="running" @click="startLatency">开始延迟测试</button><button :disabled="!running" class="secondary" @click="stopLatency">停止延迟测试</button></div><article v-for="site in latencySites" :key="site.name"><h3>{{ site.name }} · {{ site.region }}</h3><p>{{ measurements[site.name]?.length ? summary(measurements[site.name]) : '待采样' }}</p><svg v-if="measurements[site.name]?.length" viewBox="0 0 200 52" width="200" height="52" role="img" :aria-label="`${site.name} 延迟变化`"><polyline :points="graph(measurements[site.name])" fill="none" stroke="currentColor" stroke-width="2" /></svg><p class="hint">{{ measurements[site.name]?.map(value => value === null ? '失败' : `${value} ms`).join(' / ') }}</p></article></section></template>
+<template>
+  <div id="site-latency" class="site-latency">
+    <div class="latency-grid">
+      <article v-for="(site, index) in latencySites" :key="site.name" class="latency-tile" :class="tone(site.name)">
+        <div class="latency-info"><span class="site-symbol" aria-hidden="true">{{ ['▥', '▣', '◉', '淘', '⌘', '➤', '𝕏', '▶'][index] }}</span><h3>{{ site.name }}</h3><span class="site-region" :class="{ international: site.region === '国际' }">{{ site.region }}</span></div>
+        <div class="latency-value" role="status"><template v-if="latest(site.name) != null">{{ latest(site.name) }}<span>ms</span></template><span v-else class="latency-placeholder">{{ latest(site.name) === null ? '超时 / 失败' : running ? '检测中' : '未测得' }}</span></div>
+        <svg class="latency-graph" viewBox="0 0 400 52" preserveAspectRatio="none" aria-hidden="true"><path :d="graph(site.name)" fill="none" stroke="currentColor" stroke-width="2" vector-effect="non-scaling-stroke" /></svg>
+      </article>
+    </div>
+  </div>
+</template>
+<style scoped>
+.site-latency { margin-top: 22px; }
+.latency-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 16px; }
+.latency-tile { --latency-color: #7890aa; position: relative; isolation: isolate; overflow: hidden; min-width: 0; min-height: 82px; display: flex; align-items: center; gap: 12px; justify-content: space-between; padding: 18px; border: 1px solid #ffffffa6; border-radius: 16px; background: linear-gradient(135deg,#ffffff59,#ffffff26); box-shadow: inset 0 1px 1px #ffffff80; }
+.latency-tile.fast { --latency-color: #64a18b; }
+.latency-tile.moderate { --latency-color: #94a54e; }
+.latency-tile.slow { --latency-color: #c49762; }
+.latency-info { position: relative; z-index: 1; display: flex; align-items: center; flex-wrap: wrap; gap: 8px; min-width: 0; }
+.site-symbol { width: 30px; height: 30px; display: grid; place-items: center; border-radius: 10px; color: #6f99c7; background: #749bd514; font-size: 17px; }
+.latency-info h3 { font-size: 12px; font-weight: 600; margin: 0; }
+.site-region { font-size: 9px; color: #77a68f; }
+.site-region.international { color: #78a4cf; }
+.latency-value { position: relative; z-index: 1; color: var(--latency-color); font-size: 25px; font-weight: 650; font-style: italic; letter-spacing: -.7px; flex-shrink: 0; font-variant-numeric: tabular-nums; }
+.latency-value > span { font-size: 11px; font-weight: 400; margin-left: 2px; letter-spacing: 0; }
+.latency-value .latency-placeholder { font-size: 10px; font-style: normal; }
+.latency-graph { position: absolute; z-index: 0; width: 100%; height: 42px; bottom: 0; left: 0; opacity: .3; color: var(--latency-color); pointer-events: none; }
+:global(:root[data-theme=dark] .latency-tile) { border-color: #ffffff20; background: linear-gradient(135deg,#ffffff08,#ffffff03); box-shadow: inset 0 1px 1px #ffffff0a; }
+@media (max-width: 600px) { .latency-grid { grid-template-columns: 1fr; gap: 10px; } .latency-tile { min-height: 76px; padding: 16px; } }
+</style>

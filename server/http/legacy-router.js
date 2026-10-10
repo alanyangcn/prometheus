@@ -112,16 +112,6 @@ runtime.worker = {
                         const 读取日志内容 = await env.KV.get('log.json') || '[]';
                         return new Response(读取日志内容, { status: 200, headers: { 'Content-Type': 'application/json;charset=utf-8' } });
                     }
-                    else if (区分大小写访问路径 === 'admin/getCloudflareUsage') {
-                        try {
-                            const Usage_JSON = await runtime.getCloudflareUsage(url.searchParams.get('Email'), url.searchParams.get('GlobalAPIKey'), url.searchParams.get('AccountID'), url.searchParams.get('APIToken'));
-                            return new Response(JSON.stringify(Usage_JSON, null, 2), { status: 200, headers: { 'Content-Type': 'application/json' } });
-                        }
-                        catch (err) {
-                            const errorResponse = { msg: '查询请求量失败，失败原因：' + err.message, error: err.message };
-                            return new Response(JSON.stringify(errorResponse, null, 2), { status: 500, headers: { 'Content-Type': 'application/json;charset=utf-8' } });
-                        }
-                    }
                     else if (区分大小写访问路径 === 'admin/getADDAPI') {
                         if (url.searchParams.get('url')) {
                             const 待验证优选URL = url.searchParams.get('url');
@@ -252,55 +242,6 @@ runtime.worker = {
                                 return new Response(JSON.stringify({ error: '保存配置失败: ' + error.message }), { status: 500, headers: { 'Content-Type': 'application/json;charset=utf-8' } });
                             }
                         }
-                        else if (访问路径 === 'admin/cf.json') {
-                            try {
-                                const newConfig = await request.json();
-                                const CF_JSON = { Email: null, GlobalAPIKey: null, AccountID: null, APIToken: null, UsageAPI: null };
-                                if (!newConfig.init || newConfig.init !== true) {
-                                    if (newConfig.Email && newConfig.GlobalAPIKey) {
-                                        CF_JSON.Email = newConfig.Email;
-                                        CF_JSON.GlobalAPIKey = newConfig.GlobalAPIKey;
-                                    }
-                                    else if (newConfig.AccountID && newConfig.APIToken) {
-                                        CF_JSON.AccountID = newConfig.AccountID;
-                                        CF_JSON.APIToken = newConfig.APIToken;
-                                    }
-                                    else if (newConfig.UsageAPI) {
-                                        CF_JSON.UsageAPI = newConfig.UsageAPI;
-                                    }
-                                    else {
-                                        return new Response(JSON.stringify({ error: '配置不完整' }), { status: 400, headers: { 'Content-Type': 'application/json;charset=utf-8' } });
-                                    }
-                                }
-                                await env.KV.put('cf.json', JSON.stringify(CF_JSON, null, 2));
-                                ctx.waitUntil(runtime.recordLog(env, request, 访问IP, 'Save_Config', runtime.config_JSON));
-                                return new Response(JSON.stringify({ success: true, message: '配置已保存' }), { status: 200, headers: { 'Content-Type': 'application/json;charset=utf-8' } });
-                            }
-                            catch (error) {
-                                console.error('保存配置失败:', error);
-                                return new Response(JSON.stringify({ error: '保存配置失败: ' + error.message }), { status: 500, headers: { 'Content-Type': 'application/json;charset=utf-8' } });
-                            }
-                        }
-                        else if (访问路径 === 'admin/tg.json') {
-                            try {
-                                const newConfig = await request.json();
-                                if (newConfig.init && newConfig.init === true) {
-                                    const TG_JSON = { BotToken: null, ChatID: null };
-                                    await env.KV.put('tg.json', JSON.stringify(TG_JSON, null, 2));
-                                }
-                                else {
-                                    if (!newConfig.BotToken || !newConfig.ChatID)
-                                        return new Response(JSON.stringify({ error: '配置不完整' }), { status: 400, headers: { 'Content-Type': 'application/json;charset=utf-8' } });
-                                    await env.KV.put('tg.json', JSON.stringify(newConfig, null, 2));
-                                }
-                                ctx.waitUntil(runtime.recordLog(env, request, 访问IP, 'Save_Config', runtime.config_JSON));
-                                return new Response(JSON.stringify({ success: true, message: '配置已保存' }), { status: 200, headers: { 'Content-Type': 'application/json;charset=utf-8' } });
-                            }
-                            catch (error) {
-                                console.error('保存配置失败:', error);
-                                return new Response(JSON.stringify({ error: '保存配置失败: ' + error.message }), { status: 500, headers: { 'Content-Type': 'application/json;charset=utf-8' } });
-                            }
-                        }
                         else if (区分大小写访问路径 === 'admin/ADD.txt') {
                             try {
                                 const customIPs = await request.text();
@@ -324,9 +265,6 @@ runtime.worker = {
                         if (本地优选IP == 'null')
                             本地优选IP = (await runtime.generateAddresses(request, runtime.config_JSON.优选订阅生成.本地IP库.随机数量, runtime.config_JSON.优选订阅生成.本地IP库.指定端口))[1];
                         return new Response(本地优选IP, { status: 200, headers: { 'Content-Type': 'text/plain;charset=utf-8', 'asn': (request.cf || {}).asn } });
-                    }
-                    else if (访问路径 === 'admin/cf.json') {
-                        return new Response(JSON.stringify((request.cf || {}), null, 2), { status: 200, headers: { 'Content-Type': 'application/json;charset=utf-8' } });
                     }
                     ctx.waitUntil(runtime.recordLog(env, request, 访问IP, 'Admin_Login', runtime.config_JSON));
                     return runtime.serveApp(request, '/admin');
@@ -360,12 +298,7 @@ runtime.worker = {
                             "Profile-web-page-url": url.protocol + '//' + url.host + '/admin',
                             "Cache-Control": "no-store",
                         };
-                        if (runtime.config_JSON.CF.Usage.success) {
-                            const pagesSum = runtime.config_JSON.CF.Usage.pages;
-                            const workersSum = runtime.config_JSON.CF.Usage.workers;
-                            const total = Number.isFinite(runtime.config_JSON.CF.Usage.max) ? (runtime.config_JSON.CF.Usage.max / 1000) * 1024 : 1024 * 100;
-                            responseHeaders["Subscription-Userinfo"] = `upload=${pagesSum}; download=${workersSum}; total=${total}; expire=4102329600`;
-                        }
+
                         const isSubConverterRequest = url.searchParams.has('b64') || url.searchParams.has('base64') || request.headers.get('subconverter-request') || request.headers.get('subconverter-version') || ua.includes('subconverter') || ua.includes(('CF-Workers-SUB').toLowerCase()) || 作为优选订阅生成器;
                         const 订阅类型 = isSubConverterRequest
                             ? 'mixed'

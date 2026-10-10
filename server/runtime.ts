@@ -15,7 +15,7 @@ import { initializers as module13 } from './crypto/tls.js';
 import { initializers as module14 } from './proxies/turn.js';
 import { initializers as module15 } from './proxies/sstp.js';
 import { initializers as module16 } from './subscriptions/conversion.js';
-import { initializers as module17 } from './integrations/services.js';
+import { initializers as module17 } from './logging/store.js';
 import { initializers as module18 } from './config/store.js';
 import { initializers as module19 } from './subscriptions/addresses.js';
 import { initializers as module20 } from './proxies/parameters.js';
@@ -215,7 +215,6 @@ export function createRuntime(dependencies: RuntimeDependencies = {}): TunnelRun
   module16[3](runtime);
   module16[4](runtime);
   module17[0](runtime);
-  module17[1](runtime);
   module1[23](runtime);
   module1[24](runtime);
   module1[25](runtime);
@@ -235,7 +234,6 @@ export function createRuntime(dependencies: RuntimeDependencies = {}): TunnelRun
   module20[3](runtime);
   module20[4](runtime);
   module20[5](runtime);
-  module17[2](runtime);
   module1[27](runtime);
   module20[6](runtime);
   return runtime as TunnelRuntime;

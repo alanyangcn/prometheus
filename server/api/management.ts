@@ -16,7 +16,6 @@ function object(value: unknown): value is Configuration {
 const aliases: Record<string, string> = {
   '/admin/config.json': '/api/config', '/admin/ADD.txt': '/api/addresses',
   '/admin/log.json': '/api/logs', '/admin/init': '/api/config/reset',
-  '/admin/tg.json': '/api/integrations/telegram', '/admin/cf.json': '/api/integrations/cloudflare',
 };
 function validateShape(value: JsonValue, model: JsonValue, location = 'config'): void {
   if (value === null && ['config.ECHConfig.SNI', 'config.TLS分片', 'config.优选订阅生成.SUB', 'config.反代.SOCKS5.启用'].includes(location)) return;
@@ -65,7 +64,8 @@ export async function management(request: Request, env: WorkerEnv, runtime: Tunn
   }
   if (path === '/api/session') return json({ configured: !!administrator(env), authenticated: await authenticated(runtime, request, env), storage: !!env.KV });
   if (path === '/api/login' || (originalPath === '/login' && write)) {
-    if (!administrator(env)) return json({ error: '请先配置 ADMIN' }, 503);
+    const missing = [...(!administrator(env) ? ['ADMIN'] : []), ...(!env.KV ? ['KV'] : [])];
+    if (missing.length) return json({ error: `请先配置 ${missing.join(' 和 ')}` }, 503);
     if (!write) return json({ error: '请使用 POST' }, 405);
     let password: unknown;
     try {
@@ -81,7 +81,7 @@ export async function management(request: Request, env: WorkerEnv, runtime: Tunn
     if (path === '/api/logout' && !write) return json({ error: '请使用 POST' }, 405);
     return json({ success: true }, 200, { 'Set-Cookie': cookie(request, '') });
   }
-  const known = ['/api/config', '/api/config/reset', '/api/addresses', '/api/logs', '/api/integrations/telegram', '/api/integrations/cloudflare', '/api/proxy-check'];
+  const known = ['/api/config', '/api/config/reset', '/api/addresses', '/api/logs', '/api/proxy-check'];
   if (!known.includes(path) && !path.startsWith('/api/tools/')) return null;
   if (!await authenticated(runtime, request, env)) return json({ error: '请先登录' }, 401);
   if (!env.KV) return json({ error: '请绑定 KV 命名空间' }, 503);
@@ -107,6 +107,7 @@ export async function management(request: Request, env: WorkerEnv, runtime: Tunn
     if (path === '/api/config/reset') {
       if (!write && originalPath !== '/admin/init') return json({ error: '请使用 POST' }, 405);
       const config = await runtime.readConfig(env, id.host, id.uuid, request.headers.get('User-Agent') || 'null', true);
+      record('Init_Config');
       return json(config);
     }
     if (path === '/api/config') {
@@ -117,9 +118,6 @@ export async function management(request: Request, env: WorkerEnv, runtime: Tunn
       validateConfig(update, config);
       const saved = merge(config, update);
       if (saved.协议类型 === 'ss' && saved.传输协议 !== 'ws') throw new Error('Shadowsocks 仅支持 WebSocket 传输');
-      // Integrations are stored separately; masked values in this response are never credentials.
-      saved.CF = config.CF;
-      saved.TG = { ...(object(config.TG) ? config.TG : {}), 启用: object(saved.TG) ? saved.TG.启用 : false };
       await env.KV.put('config.json', JSON.stringify(saved));
       record('Save_Config');
       return json({ success: true });
@@ -142,31 +140,7 @@ export async function management(request: Request, env: WorkerEnv, runtime: Tunn
       if (write) return json({ error: '日志接口只读' }, 405);
       return json(JSON.parse(await env.KV.get('log.json') || '[]'));
     }
-    if (!write && originalPath === '/admin/cf.json') return json(request.cf || {});
-    if (!write) return json({ error: '集成凭据只支持写入' }, 405);
-    const data = await body(request);
-    if (!object(data)) throw new Error('设置必须是对象');
-    if (path === '/api/integrations/telegram') {
-      if (data.init === true) await env.KV.put('tg.json', JSON.stringify({ BotToken: null, ChatID: null }));
-      else {
-        if (typeof data.BotToken !== 'string' || typeof data.ChatID !== 'string' || !data.BotToken || !data.ChatID) throw new Error('请提供 BotToken 与 ChatID');
-        if (data.BotToken.includes('*')) throw new Error('请填写真实凭据，不要提交脱敏值');
-        await env.KV.put('tg.json', JSON.stringify({ BotToken: data.BotToken, ChatID: data.ChatID }));
-      }
-    } else {
-      const fields = ['Email', 'GlobalAPIKey', 'AccountID', 'APIToken', 'UsageAPI'];
-      const values: Record<string, string | null> = Object.fromEntries(fields.map(key => [key, null]));
-      if (data.init !== true) {
-        for (const field of fields) if (data[field] !== undefined && data[field] !== '') {
-          if (typeof data[field] !== 'string' || String(data[field]).includes('*')) throw new Error(`无效的 ${field}`);
-          values[field] = String(data[field]);
-        }
-        if (!(values.Email && values.GlobalAPIKey) && !(values.AccountID && values.APIToken) && !values.UsageAPI) throw new Error('Cloudflare 配置不完整');
-        if (values.UsageAPI && !/^https:\/\//.test(values.UsageAPI)) throw new Error('UsageAPI 必须使用 HTTPS');
-      }
-      await env.KV.put('cf.json', JSON.stringify(values));
-    }
-    return json({ success: true });
+    return json({ error: 'Not found' }, 404);
   } catch (error) {
     return json({ error: error instanceof Error ? error.message : '请求失败' }, 400);
   }

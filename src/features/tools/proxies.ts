@@ -1,5 +1,4 @@
 import type { Configuration } from '../../../shared/config';
-import { group } from '../configuration/settings';
 import { parseChainInput } from './chain';
 export interface DirectoryEntry { address: string; country: string; countryName: string; city: string; asn: string | number; organization: string; protocol: string }
 export interface ProxyResult { success: boolean; ip?: string; loc?: string; responseTime?: number; error?: string; supports_ipv4?: boolean; supports_ipv6?: boolean }
@@ -13,4 +12,3 @@ export function proxyIPConfiguration(addresses: string[]): Configuration {
   if (!addresses.length || addresses.some(value => !/^[\da-fA-F:.]+$/.test(value))) throw new Error('请选择有效 PROXYIP');
   return { 反代: { PROXYIP: [...new Set(addresses)].join(','), SOCKS5: { 启用: null, 全局: false, 账号: '' } } };
 }
-export function telegramEnabled(config: Configuration): boolean { return group(config, 'TG').启用 === true; }

@@ -17,10 +17,6 @@ async function remote(url: URL | string, init?: RequestInit) {
   if (!response.ok) throw new Error(`外部服务返回 HTTP ${response.status}`);
   return response;
 }
-function credentials(data: Record<string, unknown>, saved: string | null): Record<string, unknown> {
-  const values = Object.values(data).filter(value => typeof value === 'string' && value.trim());
-  return values.length ? data : JSON.parse(saved || '{}');
-}
 export async function tools(request: Request, env: WorkerEnv, runtime: TunnelRuntime, _ctx: ExecutionContext): Promise<Response | null> {
   const path = new URL(request.url).pathname;
   if (!path.startsWith(PREFIX)) return null;
@@ -73,57 +69,12 @@ export async function tools(request: Request, env: WorkerEnv, runtime: TunnelRun
       if (data.config) { const configURL = https(data.config); const config = await (await remote(configURL)).text(); if (!config.trim() || config.length > 1024 * 1024 || /<html/i.test(config)) throw new Error('转换配置响应无效'); }
       return reply({ success: true, version, baseURL });
     }
-    if (action === 'telegram-check' || action === 'telegram-send-test') {
-      const c = credentials(data, await env.KV!.get('tg.json'));
-      if (typeof c.BotToken !== 'string' || !/^\d+:[\w-]+$/.test(c.BotToken) || typeof c.ChatID !== 'string' || !c.ChatID) throw new Error('Telegram 凭据不完整');
-      // Telegram requires its token in the upstream path; never return or log it.
-      const method = action === 'telegram-check' ? 'getMe' : 'sendMessage';
-      const result = await (await remote(`https://api.telegram.org/bot${c.BotToken}/${method}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(method === 'getMe' ? {} : { chat_id: c.ChatID, text: 'Prometheus 管理界面测试通知' }) })).json() as { ok?: boolean; result?: { username?: string; is_bot?: boolean } };
-      if (!result.ok || (method === 'getMe' && !result.result?.is_bot)) throw new Error('Telegram 验证失败');
-      return reply({ success: true, username: method === 'getMe' ? result.result?.username : undefined, message: method === 'getMe' ? 'Bot 有效；Chat ID 投递状态需显式发送测试确认' : '测试通知已发送' });
-    }
-    if (action === 'cloudflare-check') {
-      const c = credentials(data, await env.KV!.get('cf.json'));
-      if (c.UsageAPI) {
-        const usage = await (await remote(https(c.UsageAPI))).json() as Record<string, unknown>;
-        if (usage.success !== true || !Number.isFinite(usage.total) || !Number.isFinite(usage.max)) throw new Error('UsageAPI 响应无效');
-        return reply({ success: true, total: usage.total, max: usage.max });
-      }
-      let account = c.AccountID;
-      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-      if (c.APIToken && account) headers.Authorization = `Bearer ${String(c.APIToken)}`;
-      else if (c.Email && c.GlobalAPIKey) { headers['X-Auth-Email'] = String(c.Email); headers['X-Auth-Key'] = String(c.GlobalAPIKey); }
-      else throw new Error('Cloudflare 凭据不完整');
-      if (!account) {
-        const result = await (await remote('https://api.cloudflare.com/client/v4/accounts', { headers })).json() as { success?: boolean; result?: { id: string; name?: string }[] };
-        if (!result.success || !result.result?.length) throw new Error('Cloudflare 账户验证失败');
-        account = (result.result.find(a => a.name?.toLowerCase().startsWith(String(c.Email).toLowerCase())) || result.result[0]).id;
-      }
-      const now = new Date(); const start = new Date(now); start.setUTCHours(0, 0, 0, 0);
-      type UsageRow = { sum?: { requests?: number } };
-      type UsageAccount = { pagesFunctionsInvocationsAdaptiveGroups?: UsageRow[]; workersInvocationsAdaptive?: UsageRow[] };
-      const result = await (await remote('https://api.cloudflare.com/client/v4/graphql', { method: 'POST', headers, body: JSON.stringify({ query: 'query getBillingMetrics($AccountID: String!, $filter: AccountWorkersInvocationsAdaptiveFilter_InputObject) { viewer { accounts(filter: {accountTag: $AccountID}) { pagesFunctionsInvocationsAdaptiveGroups(limit: 1000, filter: $filter) { sum { requests } } workersInvocationsAdaptive(limit: 10000, filter: $filter) { sum { requests } } } } }', variables: { AccountID: account, filter: { datetime_geq: start.toISOString(), datetime_leq: now.toISOString() } } }) })).json() as { errors?: unknown[]; data?: { viewer?: { accounts?: UsageAccount[] } } };
-      const accountData = result.data?.viewer?.accounts?.[0];
-      if (result.errors?.length || !accountData) throw new Error('Cloudflare 用量查询失败');
-      const sum = (rows: UsageRow[] | undefined) => (rows || []).reduce((total, row) => total + Number(row.sum?.requests || 0), 0);
-      const pages = sum(accountData.pagesFunctionsInvocationsAdaptiveGroups), workers = sum(accountData.workersInvocationsAdaptive);
-      if (!Number.isFinite(pages + workers)) throw new Error('Cloudflare 用量响应无效');
-      return reply({ success: true, pages, workers, total: pages + workers, max: 100000 });
-    }
     if (action === 'ip-info') {
       if (typeof data.ip !== 'string' || !/^[\da-fA-F:.]+$/.test(data.ip)) throw new Error('IP 无效');
       let info: Record<string, unknown>;
       try { info = await (await remote(`https://api.ipapi.is/?q=${encodeURIComponent(data.ip)}`)).json() as Record<string, unknown>; } catch { info = await (await remote(`https://api.090227.xyz/api/ipapi?ip=${encodeURIComponent(data.ip)}`)).json() as Record<string, unknown>; }
       if (!info.ip || info.error) throw new Error('IP 信息响应无效');
       return reply(normalizeIP(info));
-    }
-    if (action === 'snippet') {
-      if (typeof data.uuid !== 'string' || !/^[\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12}$/i.test(data.uuid)) throw new Error('UUID 无效');
-      const source = await (await remote('https://raw.githubusercontent.com/EDT-Pages/EDT.min.js/Snippets/EDT.min.js')).text();
-      const pattern = /(const\s+userID\s*=\s*["'])([^"']*)(["']\s*,\s*Password\s*=\s*["'])([^"']*)(["']\s*;)/;
-      if (/[\u0590-\u05ff]/.test(source) || /(?:hebrewPadding|religiousPadding|SNIPPETS_DICT|applySnippetDictionary|犹太|希伯来填充)/i.test(source)) throw new Error('Snippet 上游源码包含不兼容的填充或字典内容');
-      if (source.length > 1024 * 1024 || !pattern.test(source)) throw new Error('Snippet 源码结构不兼容');
-      return reply({ code: source.replace(pattern, (_match, a, _id, b, _password, end) => `${a}${data.uuid}${b}${runtime.sha224(data.uuid)}${end}`) });
     }
     return reply({ error: '工具不存在' }, 404);
   } catch (error) {

@@ -1,6 +1,6 @@
 // Browser network diagnostics migrated from cmliu/edgetunnel admin (GPL-2.0).
 export interface NetworkProbe { name: string; group: string; url: string; kind: 'trace' | 'json' | 'jsonp' }
-export interface NetworkResult { name: string; group: string; success: boolean; ip?: string; location?: string; version?: 'v4' | 'v6'; duration: number; error?: string }
+export interface NetworkResult { name: string; group: string; success: boolean; ip?: string; location?: string; version?: 'v4' | 'v6'; asn?: string; organization?: string; duration: number; error?: string }
 export const networkSources: NetworkProbe[] = [
   ...['api.cloudflare-cn.com','www.cf-ns.com','www.cf-ns.net','www.cf-ns.tech'].map((host,index) => ({name:`国内 ${index+1}`,group:'国内出口',url:`https://${host}/cdn-cgi/trace`,kind:'trace' as const})),
   {name:'ipapi.is',group:'海外出口',url:'https://api.ipapi.is',kind:'json'},
@@ -31,9 +31,10 @@ function requestSignal(parent: AbortSignal): {signal: AbortSignal; cleanup: () =
   const timer = setTimeout(abort,8000);
   return {signal:controller.signal,cleanup:() => { clearTimeout(timer); parent.removeEventListener('abort',abort); }};
 }
+let callbackSequence = 0;
 async function jsonp(url: string, signal: AbortSignal): Promise<Record<string, unknown>> {
   return new Promise((resolve,reject) => {
-    const callback = `prometheusProbe_${crypto.randomUUID().replace(/-/g,'')}`, script = document.createElement('script');
+    const callback = `prometheusProbe_${`${Date.now()}_${++callbackSequence}`}`, script = document.createElement('script');
     const scope = window as unknown as Record<string, unknown>;
     const cleanup = () => { script.remove(); delete scope[callback]; signal.removeEventListener('abort',abort); };
     const abort = () => { cleanup(); reject(new Error('检测已停止或超时')); };
@@ -56,7 +57,12 @@ export async function probeNetwork(source: NetworkProbe, parent: AbortSignal, re
     }
     const ip = String(data.ip || ''), version = ipVersion(ip);
     if (!version) throw new Error('无有效出口 IP');
-    return {name:source.name,group:source.group,success:true,ip,version,location:[data.loc || data.country_code || data.country || data.cc, data.org || data.asn_org || data.as_name].filter(Boolean).join(' '),duration:Math.round(now()-start)};
+    const location = data.location && typeof data.location === 'object' ? data.location as Record<string, unknown> : {};
+    const network = data.asn && typeof data.asn === 'object' ? data.asn as Record<string, unknown> : {};
+    const country = data.loc || data.country_code || location.country_code || location.country || data.country || data.cc;
+    const organization = data.org || data.asn_org || data.as_name || network.org;
+    const asn = network.asn || data.asn_num || (typeof data.asn !== 'object' ? data.asn : undefined);
+    return {name:source.name,group:source.group,success:true,ip,version,location:[country, organization].filter(value => typeof value === 'string').join(' '),...(organization ? {organization:String(organization)} : {}),...(asn ? {asn:String(asn).replace(/^AS/i,'')} : {}),duration:Math.round(now()-start)};
   } catch (e) { return {name:source.name,group:source.group,success:false,duration:Math.round(now()-start),error:parent.aborted ? '已停止' : e instanceof Error ? e.message : '检测失败'}; }
   finally {cleanup();}
 }
