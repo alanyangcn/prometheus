@@ -17,6 +17,7 @@
     "@cloudflare/vitest-plugin": "^1.0.0",
     "@types/node": "^26.6.5",
     "@vitejs/plugin-vue": "^6.0.10",
+    "javascript-obfuscator": "^5.9.0",
     "typescript": "^5.5.2",
     "vite": "^8.3.4",
     "vitest": "~4.1.0",

@@ -79,3 +79,9 @@ Cloudflare Workers Builds 已连接 `alanyangcn/prometheus`，生产分支为 `m
 - 生产管理员密码：Worker Secret `ADMIN`；不写入仓库。
 
 main 更新后由 Cloudflare 原生 Git 集成构建和部署，部署凭据由 Cloudflare 管理，无需另行配置 GitHub 部署 Token。`.github/workflows/ci.yml` 只负责测试与构建。
+
+## 生产构建压缩与混淆
+
+`npm run build` 对 Worker 和浏览器 JavaScript 执行压缩，对 CSS 执行压缩；`build/obfuscation.ts` 只对浏览器产物应用标识符和字符串数组混淆，在最终文件哈希计算前执行。开发模式不执行混淆，生产构建不输出 sourcemap。
+
+混淆使用 `javascript-obfuscator`，不启用 eval、反调试、自保护、垃圾代码或控制流扁平化。Worker 网络及密码学算法只进行压缩。混淆可能增加前端体积，也不提供密码或源码保密保证；本项目源码仍公开并保留 GPL 许可。
