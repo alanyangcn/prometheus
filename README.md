@@ -71,6 +71,11 @@ UDP 支持受原协议实现与 Workers 平台约束；订阅的 Clash/Sing-box 
 
 ## GitHub 自动部署
 
-`.github/workflows/deploy.yml` 在 main 更新或手动触发时运行测试、构建和 Wrangler 部署。
+Cloudflare Workers Builds 已连接 `alanyangcn/prometheus`，生产分支为 `main`。
 
-仓库需配置 Secret `CLOUDFLARE_API_TOKEN` 和 Variable `CLOUDFLARE_ACCOUNT_ID`。API Token 应限制到目标账号，包含 Workers Scripts 编辑、Workers KV Storage 编辑及 Account Settings 读取权限。Token 不应写入代码或提交；生产 ADMIN 通过 Cloudflare Worker Secrets 单独设置。部署前必须将 wrangler.jsonc 中 KV 绑定补全为生产命名空间 ID。
+- 构建命令：`npm ci && npm test && npm run build`
+- 部署命令：`npx wrangler deploy`
+- 生产 KV：`prometheus`，绑定名 `KV`。
+- 生产管理员密码：Worker Secret `ADMIN`；不写入仓库。
+
+main 更新后由 Cloudflare 原生 Git 集成构建和部署，部署凭据由 Cloudflare 管理，无需另行配置 GitHub 部署 Token。`.github/workflows/ci.yml` 只负责测试与构建。
