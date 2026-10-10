@@ -5,7 +5,7 @@ import worker from '../server/index';
 function fixture() {
   const data = new Map<string, string>();
   const env = {
-    ADMIN: 'test-only-password', UUID: '90cd4a77-141a-43c9-991b-08263cfe9c10',
+    ADMIN: 'test-only-password', ADMIN_PATH: 'test-entry', UUID: '90cd4a77-141a-43c9-991b-08263cfe9c10',
     KV: { get: async (key: string) => data.get(key) ?? null, put: async (key: string, value: string) => { data.set(key, value); } },
   };
   async function request(path: string, body?: unknown, cookie?: string, origin?: string) {
@@ -58,7 +58,7 @@ describe('Authenticated local management', () => {
     const f = fixture(); const cookie = await login(f);
     expect((await f.request('/api/addresses', { text: 'example.com:443#test' }, cookie)).status).toBe(200);
     expect(await (await f.request('/api/addresses', undefined, cookie)).json()).toEqual({ text: 'example.com:443#test' });
-    expect((await f.request('/admin/config.json', undefined, cookie)).status).toBe(200);
+    expect((await f.request('/test-entry/admin/config.json', undefined, cookie)).status).toBe(200);
   });
 });
 
@@ -76,13 +76,13 @@ describe('Subscriptions and routing compatibility', () => {
     expect(content).toContain('host=example.com');
     expect((await f.request('/sub?token=wrong')).status).not.toBe(200);
   });
-  it('serves local admin deep links instead of remote HTML or JSON authorization errors', async () => {
+  it('redirects unauthenticated prefixed management deep links to login', async () => {
     const f = fixture();
     const env = { ...f.env, ASSETS: { fetch: async () => new Response('<html>local-app</html>', { headers: { 'Content-Type': 'text/html' } }) } };
     const ctx = createExecutionContext();
-    const response = await worker.fetch(new Request('https://example.com/admin/settings'), env as any, ctx);
-    expect(response.status).toBe(200);
-    expect(await response.text()).toContain('local-app');
+    const response = await worker.fetch(new Request('https://example.com/test-entry/Illumination/settings'), env as any, ctx);
+    expect(response.status).toBe(302);
+    expect(response.headers.get('Location')).toBe('/test-entry/spark');
   });
   it('validates proxy checks before making network connections', async () => {
     const f = fixture(); const cookie = await login(f);
