@@ -17,5 +17,6 @@
       "id": "219f845bda1a403e96d2705baad24173"
     }
   ],
-  "account_id": "ac7eeee2ac55f6e94433bc62aad2da53"
+  "account_id": "ac7eeee2ac55f6e94433bc62aad2da53",
+  "keep_vars": true
 }
