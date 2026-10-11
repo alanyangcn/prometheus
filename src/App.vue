@@ -6,17 +6,12 @@ import { useTheme } from './composables/useTheme';
 import { useSessionStore } from './stores/session';
 import AppToast from './components/AppToast.vue';
 import ResetConfiguration from './components/ResetConfiguration.vue';
-import { storeToRefs } from 'pinia';
-import { useInterfaceStore } from './stores/interface';
 const mobileMenu = ref<HTMLDetailsElement | null>(null);
 function closeMobileMenu() { mobileMenu.value?.removeAttribute('open'); }
 function closeOutsideMenu(event: PointerEvent) { if (!mobileMenu.value?.contains(event.target as Node)) closeMobileMenu(); }
-function mobileToggleMode() { interfaceStore.toggleMode(); closeMobileMenu(); }
 function mobileReset() { closeMobileMenu(); resetDialog.value?.open(); }
 onMounted(() => document.addEventListener('pointerdown', closeOutsideMenu));
 onUnmounted(() => document.removeEventListener('pointerdown', closeOutsideMenu));
-const interfaceStore = useInterfaceStore();
-const { mode } = storeToRefs(interfaceStore);
 const resetDialog = ref<InstanceType<typeof ResetConfiguration> | null>(null);
 const pageVersion = ref(0);
 const notice = useToastMessage('success');
@@ -39,7 +34,6 @@ async function logout() {
     <header v-if="!isLogin">
       <a class="brand" href="/" aria-label="Prometheus 首页"><img src="/favicon.svg" class="brand-mark" alt="" width="28" height="28" /><span class="brand-name">Prometheus</span></a>
       <nav aria-label="主导航">
-        <button v-if="session.state.authenticated" type="button" class="secondary mode-switch desktop-control" :aria-pressed="mode === 'expert'" :title="mode === 'simple' ? '切换到专家模式' : '切换到简单模式'" @click="interfaceStore.toggleMode()">{{ mode === 'simple' ? '简单模式' : '专家模式' }}</button>
         <button v-if="session.state.authenticated" type="button" class="danger-reset desktop-control" @click="resetDialog?.open()">重置配置</button>
         <button type="button" class="secondary theme-toggle" :aria-pressed="dark" :aria-label="dark ? '切换浅色模式' : '切换深色模式'" :title="dark ? '切换浅色模式' : '切换深色模式'" @click="toggleTheme">
           <svg v-if="dark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4" /><path d="M12 2v2m0 16v2M2 12h2m16 0h2M4.93 4.93l1.42 1.42m11.3 11.3 1.42 1.42M4.93 19.07l1.42-1.42m11.3-11.3 1.42-1.42" /></svg>
@@ -49,21 +43,20 @@ async function logout() {
         <details v-if="session.state.authenticated" ref="mobileMenu" class="mobile-menu" @keydown.esc="closeMobileMenu">
           <summary class="theme-toggle" aria-label="打开导航菜单" title="菜单"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16" /></svg></summary>
           <div class="mobile-menu-panel">
-            <button type="button" class="secondary" :aria-pressed="mode === 'expert'" @click="mobileToggleMode">{{ mode === 'simple' ? '切换到专家模式' : '切换到简单模式' }}</button>
             <button type="button" class="danger-reset" @click="mobileReset">重置配置</button>
           </div>
         </details>
       </nav>
     </header>
     <nav v-if="!isLogin && session.state.authenticated" class="tabs" aria-label="管理导航">
-      <RouterLink to="/Illumination">概览</RouterLink>
-      <RouterLink to="/Illumination/network">网络信息</RouterLink>
-      <RouterLink to="/Illumination/settings">节点配置</RouterLink>
-      <RouterLink to="/Illumination/subscription">优选订阅</RouterLink>
-      <RouterLink to="/Illumination/conversion">订阅转换</RouterLink>
-      <RouterLink to="/Illumination/ech">ECH</RouterLink>
-      <RouterLink to="/Illumination/cdn">Cloudflare CDN</RouterLink>
-      <RouterLink to="/Illumination/logs">日志</RouterLink>
+      <RouterLink to="/illumination">概览</RouterLink>
+      <RouterLink to="/illumination/subscription">优选订阅</RouterLink>
+      <RouterLink to="/illumination/settings">节点配置</RouterLink>
+      <RouterLink to="/illumination/conversion">订阅转换</RouterLink>
+      <RouterLink to="/illumination/ech">ECH</RouterLink>
+      <RouterLink to="/illumination/cdn">Cloudflare CDN</RouterLink>
+      <RouterLink to="/illumination/network">网络信息</RouterLink>
+      <RouterLink to="/illumination/logs">日志</RouterLink>
     </nav>
 
 

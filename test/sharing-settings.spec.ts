@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { subscriptionMode, setSubscriptionMode, setProxyMode, prepareSettings, echConflict, resolveEchConflict } from '../src/features/configuration/settings';
+import { subscriptionMode, setSubscriptionMode, prepareSettings, echConflict, resolveEchConflict } from '../src/features/configuration/settings';
 import { subscriptionLinks } from '../src/features/sharing/links';
 import type { Configuration } from '../shared/config';
 describe('reference configuration interactions', () => {
@@ -8,10 +8,6 @@ describe('reference configuration interactions', () => {
     setSubscriptionMode(config, 'generator'); expect(subscriptionMode(config)).toBe('generator');
     setSubscriptionMode(config, 'custom'); expect(subscriptionMode(config)).toBe('custom');
     expect(config.优选订阅生成).toMatchObject({ TOKEN: 'keep', SUBNAME: 'name', SUB: null, 本地IP库: { 随机数量: 32, 指定端口: 443 } });
-  });
-  it('retains whitelist and templates while disabling account proxy', () => {
-    const config: Configuration = { 反代: { PROXYIP: 'auto', SOCKS5: { 启用: 'turn', 全局: true, 账号: 'u:p@host:3478', 白名单: ['*.example.com'] }, 路径模板: { PROXYIP: 'proxyip={{IP:PORT}}' } } };
-    setProxyMode(config, 'off'); expect(config.反代).toMatchObject({ PROXYIP: 'auto', SOCKS5: { 启用: null, 全局: false, 账号: '', 白名单: ['*.example.com'] } });
   });
   it('normalizes UA, optional SNI, TLS and template prefixes before saving without modifying the draft', () => {
     const config: Configuration = { gRPCUserAgent: '  ', TLS分片: '', ECHConfig: { SNI: '' }, 反代: { 路径模板: { PROXYIP: '/proxyip={{IP:PORT}}', HTTP: { 标准: '/http={{IP:PORT}}' } } } };
@@ -67,23 +63,5 @@ describe('remaining management workflows', () => {
     expect(hostsMismatch({ HOSTS: ['edge.example:443'] }, 'edge.example')).toBe(false);
     expect(hostsMismatch({ HOSTS: ['other.example'] }, 'edge.example')).toBe(true);
     expect(hostsMismatch({ HOSTS: [] }, 'edge.example')).toBe(false);
-  });
-});
-
-describe('management view preferences', () => {
-  it('restores persisted expert mode and section expansion without storing configuration data', async () => {
-    const { readPreference, writePreference } = await import('../src/features/configuration/preferences');
-    const values = new Map<string, string>();
-    const storage = { getItem: (key: string) => values.get(key) ?? null, setItem: (key: string, value: string) => { values.set(key, value); } };
-    expect(readPreference(storage, 'mode', 'simple')).toBe('simple');
-    writePreference(storage, 'mode', 'expert'); writePreference(storage, 'section-proxy', 'open');
-    expect(readPreference(storage, 'mode', 'simple')).toBe('expert');
-    expect(readPreference(storage, 'section-proxy', 'closed')).toBe('open');
-    expect([...values.keys()]).toEqual(['prometheus:settings:mode', 'prometheus:settings:section-proxy']);
-  });
-  it('still allows controls when browser storage is unavailable', async () => {
-    const { readPreference, writePreference } = await import('../src/features/configuration/preferences');
-    const storage = { getItem: () => { throw Error('blocked'); }, setItem: () => { throw Error('blocked'); } };
-    expect(readPreference(storage, 'mode', 'simple')).toBe('simple'); expect(() => writePreference(storage, 'mode', 'expert')).not.toThrow();
   });
 });

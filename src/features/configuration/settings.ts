@@ -1,6 +1,5 @@
 import type { Configuration } from '../../../shared/config';
 export type SubscriptionMode = 'random' | 'custom' | 'generator';
-export type ProxyMode = 'off' | 'socks5' | 'http' | 'https' | 'turn' | 'sstp';
 export function group(config: Configuration, key: string): Configuration {
   const value = config[key];
   if (value && typeof value === 'object' && !Array.isArray(value)) return value;
@@ -14,10 +13,6 @@ export function setSubscriptionMode(config: Configuration, mode: SubscriptionMod
   const sub = group(config, '优选订阅生成'); sub.local = mode !== 'generator';
   group(sub, '本地IP库').随机IP = mode === 'random';
   if (mode !== 'generator') sub.SUB = null;
-}
-export function setProxyMode(config: Configuration, mode: ProxyMode) {
-  const proxy = group(group(config, '反代'), 'SOCKS5'); proxy.启用 = mode === 'off' ? null : mode;
-  if (mode === 'off') { proxy.账号 = ''; proxy.全局 = false; }
 }
 export function prepareSettings(config: Configuration, userAgent: string): Configuration {
   const result = JSON.parse(JSON.stringify(config)) as Configuration;

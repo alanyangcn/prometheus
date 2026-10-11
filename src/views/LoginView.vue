@@ -24,7 +24,7 @@ async function login() {
     if (!password.value) { error.value = '请输入管理员密码'; return; }
     await session.login(password.value);
     password.value = '';
-    await router.push('/Illumination');
+    await router.push('/illumination');
   }
   catch (e) { error.value = e instanceof Error ? e.message : '登录失败'; }
   finally { busy.value = false; }

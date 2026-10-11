@@ -22,7 +22,7 @@ onMounted(async () => {
 onUnmounted(() => { active = false; cleanups.forEach(cleanup => cleanup()); });
 const generation = computed(() => store.data?.优选订阅生成 as Configuration | undefined);
 const token = computed(() => String(generation.value?.TOKEN || ''));
-const links = computed(() => subscriptionLinks(window.location.origin, token.value, String(generation.value?.SUBNAME || 'Prometheus')));
+const links = computed(() => subscriptionLinks(window.location.origin, token.value, String(generation.value?.SUBNAME || store.data?.HOST || window.location.hostname)));
 </script>
 <template>
   <section class="illumination-overview" aria-labelledby="overview-title">
@@ -33,8 +33,8 @@ const links = computed(() => subscriptionLinks(window.location.origin, token.val
       <section ref="subscriptionsGlass" class="overview-glass subscriptions-panel">
         <div class="panel-heading"><span class="panel-symbol" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="m10 13 4-4m-6 6-2 2a4 4 0 0 1-6-6l4-4a4 4 0 0 1 6 0m2 2 2-2a4 4 0 0 1 6 6l-4 4a4 4 0 0 1-6 0" transform="translate(2 0)" /></svg></span><div><h2>节点与订阅</h2><p>点击链接，即可复制</p></div></div>
         <div class="subscription-links">
-        <ShareLink label="节点链接" :url="String(store.data.LINK || '')" :import-url="String(store.data.LINK || '')" />
-        <ShareLink v-for="link in links" :key="link.id" :label="link.label" :url="link.url" :import-url="link.importUrl" :filename="link.filename"><template v-if="link.id === 'auto'" #label-action><SubscriptionTokenHelp /></template></ShareLink>
+        <ShareLink copy-button label="节点链接" :url="String(store.data.LINK || '')" :import-url="String(store.data.LINK || '')" />
+        <ShareLink copy-button v-for="link in links" :key="link.id" :label="link.label" :url="link.url" :import-url="link.importUrl" :filename="link.filename"><template v-if="link.id === 'auto'" #label-action><SubscriptionTokenHelp /></template></ShareLink>
         </div>
       </section>
     </div>

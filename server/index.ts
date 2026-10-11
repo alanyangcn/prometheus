@@ -6,11 +6,11 @@ import type { WorkerEnv } from './env';
 import { hasEntryMarker, recordEntry } from './auth/entry-marker';
 
 const legacyManagementPaths = new Set(['/admin/config.json', '/admin/ADD.txt', '/admin/log.json', '/admin/init', '/admin/getADDAPI', '/admin/check']);
-const managementPages = new Set(['/spark', '/Illumination', '/Illumination/network', '/Illumination/settings', '/Illumination/subscription', '/Illumination/ech', '/Illumination/cdn', '/Illumination/conversion', '/Illumination/logs']);
+const managementPages = new Set(['/spark', '/illumination', '/illumination/network', '/illumination/settings', '/illumination/subscription', '/illumination/ech', '/illumination/cdn', '/illumination/conversion', '/illumination/logs']);
 function managementBase(env: WorkerEnv): string {
   const value = env.ADMIN_PATH?.trim().replace(/^\/+|\/+$/g, '') || '';
   // One URL-safe segment; never collide with assets, API or protocol endpoints.
-  if (!/^[A-Za-z0-9_-]{1,64}$/.test(value) || /^(api|assets|src|node_modules|@.*|sub|version|locations|robots\.txt|login|admin|spark|Illumination|setup|logout)$/i.test(value)) return '';
+  if (!/^[A-Za-z0-9_-]{1,64}$/.test(value) || /^(api|assets|src|node_modules|@.*|sub|version|locations|robots\.txt|login|admin|spark|illumination|setup|logout)$/i.test(value)) return '';
   return '/' + value;
 }
 function notFound(): Response {
@@ -70,7 +70,7 @@ export default {
         return rememberEntry(notFound());
       }
       // Outside paths reveal the entry only to browsers with an unexpired discovery marker.
-      if (!upgrade && (url.pathname === '/spark' || url.pathname === '/Illumination' || url.pathname.startsWith('/Illumination/') || url.pathname === '/admin.html' || url.pathname === '/login' || url.pathname === '/setup' || url.pathname === '/admin' || url.pathname.startsWith('/admin/'))) return read ? outsidePage() : notFound();
+      if (!upgrade && (url.pathname === '/spark' || url.pathname === '/illumination' || url.pathname.startsWith('/illumination/') || url.pathname === '/admin.html' || url.pathname === '/login' || url.pathname === '/setup' || url.pathname === '/admin' || url.pathname.startsWith('/admin/'))) return read ? outsidePage() : notFound();
       if (url.pathname === '/api/health') return Response.json({ name: 'prometheus', status: 'ok' });
       const response = await management(request, env, runtime, ctx);
       if (response) return response;

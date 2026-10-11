@@ -1,117 +1,162 @@
-# Prometheus · 普罗米修斯
+# Prometheus
 
-基于 Vue 3 + TypeScript + Vite + Vue Router + Pinia 的 Cloudflare Workers 隧道服务与本地管理界面，按模块迁移 edgetunnel 的网络功能，剔除无关宗教填充、混淆彩蛋和运行时外站管理页面。
+当前版本：**1.0.0**
 
-## 当前状态
+基于 Cloudflare Workers 的隧道与订阅服务，配套 Vue 3 管理界面和独立摄影首页。项目已完成参考项目 [cmliu/edgetunnel](https://github.com/cmliu/edgetunnel) 的目标功能迁移，并按当前产品需求整理页面、模块和配置流程。
 
-核心算法已按模块迁移，本地 Vue 管理界面已接入。管理工作流已扩展到订阅分享、节点配置、优选订阅、订阅转换、ECH、Cloudflare CDN 访问设置与网络诊断。受控测试与浏览器管理流程的验证记录见功能矩阵；真实外部代理与客户端组合的端到端验证仍待完成。详细范围见 `docs/feature-matrix.md`。
+前端使用 TypeScript、Vite、Vue Router 和 Pinia；后端按认证、配置、协议、传输、代理、订阅和日志拆分。底层协议算法保留聚焦的 JavaScript 模块，新应用入口和 API 使用 TypeScript。功能范围与验证记录见 [功能矩阵](docs/feature-matrix.md)。
 
-新路由、认证、管理 API 与 Vue 使用 TypeScript；迁移的底层算法保留 JavaScript，并由请求级运行时组合。内部动态注册仍需逐步收紧类型，不将这次迁移描述为全部算法的纯 TypeScript 重写。
+## 功能
+
+- **协议与传输**：VLESS、Trojan、Shadowsocks，WebSocket、gRPC、XHTTP；保留协议加密、早期数据、分片、padding 和连接回退。
+- **上游代理**：PROXYIP、SOCKS5、HTTP、HTTPS、TURN、SSTP，支持全局代理、域名名单及路径模板。
+- **订阅**：自适应、Base64、Clash、Sing-box、Surge、Loon、Quantumult X，支持复制链接、客户端导入、二维码和下载。
+- **优选订阅**：随机优选、自定义地址、订阅生成器、文本与 API 导入、链式节点及浏览器优选。
+- **配置与管理**：KV 持久化、登录鉴权、自定义管理路径、取消修改、配置重置和操作日志。
+- **网络信息**：浏览器国内、国外、Cloudflare IPv4/IPv6、Google/X 出口检测，站点延迟（含 Telegram.DC5）、当前连接信息与 IP 详情。
+- **界面**：液态玻璃样式、浅色/深色主题、移动端布局、统一弹窗、选择框、勾选框和 Toast。
+
+管理导航依次为：**概览 → 优选订阅 → 节点配置 → 订阅转换 → ECH → Cloudflare CDN → 网络信息 → 日志**。地址库、订阅接口、链式节点和浏览器优选归入优选订阅；代理和路径模板归入 Cloudflare CDN；转换后端与规则归入订阅转换。
+
+迁移完成指目标功能和工作流已落地，不代表所有客户端、代理服务器和第三方服务组合均完成实网验收。UDP 范围受原协议与 Workers 平台限制，不提供任意原生 UDP；部分订阅格式依赖外部转换服务。
 
 ## 本地开发
+
+需要 Node.js **22.20 或更高版本**。
 
 ```bash
 npm install
 cp .dev.vars.example .dev.vars
-# 编辑 .dev.vars，设置自己的 ADMIN；不要提交真实密码
+```
+
+编辑 `.dev.vars`，设置自己的管理密码与路径前缀：
+
+```dotenv
+ADMIN="your-admin-password"
+ADMIN_PATH="as"
+```
+
+确认 `wrangler.jsonc` 存在名为 `KV` 的命名空间绑定。本地开发使用模拟 KV，不需要读写生产 KV。
+
+```bash
 npm run dev
 ```
 
-开发服务默认 http://localhost:5173，管理页面 `/<ADMIN_PATH>/Illumination`，登录页面 `/<ADMIN_PATH>/spark`。KV 使用本地模拟存储；真实部署需绑定自己的命名空间。
+默认地址为 `http://localhost:5173`；以上示例的登录页为 `/as/spark`，管理概览为 `/as/illumination`。`.dev.vars` 仅用于本地开发，不提交真实密码。修改环境变量后需让开发服务重新读取配置。
+
+## 运行时配置
+
+| 名称 | 用途 |
+| --- | --- |
+| `ADMIN` | 管理员密码，生产环境建议设置为 Secret |
+| `ADMIN_PATH` | 管理网页的单层路径前缀；未设置或无效时关闭管理网页入口 |
+| `KV` | KV 命名空间绑定，绑定名必须为 `KV` |
+| `UUID` | 可选固定 UUIDv4 |
+| `KEY` | 快速订阅路径密钥及旧身份派生兼容 |
+| `HOST` / `PATH` | 节点域名与路径覆盖 |
+| `PROXYIP` | 上游反代地址 |
+| `GO2SOCKS5` | 上游代理域名匹配名单 |
+| `DEBUG` / `OFF_LOG` | 调试与关闭 KV 日志 |
+| `BEST_SUB` | 优选订阅生成器模式 |
+| `PRELOAD_RACE_DIAL` | 预加载竞速拨号 |
+| `TCP_CONCURRENT_DIAL` / `PROXY_CONCURRENT_DIAL` | 并发拨号参数 |
+
+`KV` 是资源绑定，其余为运行时变量或密钥。登录需要同时设置 ADMIN 和 KV；缺失时在登录页弹窗提示。
+
+### 管理路径与鉴权
+
+ADMIN_PATH 允许 1–64 个英文字母、数字、下划线或短横线，可输入 `as` 或 `/as/`，不能使用 API、静态资源或协议端点的保留名称。
+
+- 首页 `/` 为独立摄影页，不包含管理路径或管理业务代码。
+- 登录页为 `/<ADMIN_PATH>/spark`，管理页为 `/<ADMIN_PATH>/illumination` 及其子路由。
+- 未访问正确前缀时，错误前缀、旧管理路径及直接访问 `/admin.html` 返回 HTTP 404。
+- 首次访问正确前缀会设置带签名的 HttpOnly Cookie，有效期固定 30 分钟，不随刷新续期。有效期内访问前缀外的其他网页会跳转到当前登录页；首页、静态资源、API、订阅和隧道不受影响。
+- 入口 Cookie 不授予登录权限；前缀内管理页面仍需登录。修改 ADMIN_PATH 会使旧入口标识失效。
+
+管理前缀在运行时注入，无需为不同前缀重新构建前端。摄影首页和管理界面独立打包；静态 JS/CSS 公开，管理 API 保持认证和原有地址规则。
+
+## 构建与部署
+
+提供两种构建方式，使用同一套后端路由、配置和鉴权逻辑。
+
+### 标准构建：Worker + Static Assets
+
+```bash
+npm run build
+```
+
+前端资源输出到 `dist/client/`，Worker 及部署配置输出到 `dist/prometheus/`。此方式需要 `ASSETS` 绑定，供 Wrangler 部署前端资源。
+
+部署到自己的 Cloudflare 账户前，修改 `wrangler.jsonc` 中的 Worker 名称、账户 ID 和 KV 命名空间 ID，并配置目标 Worker 的 ADMIN、ADMIN_PATH 等运行时参数。本地 `.dev.vars` 不会自动成为生产 Secrets。
+
+```bash
+npx wrangler login
+npx wrangler deploy --dry-run
+npm run deploy
+```
+
+### 单文件构建：独立 workers.js
+
+```bash
+npm run build:single
+```
+
+输出 **`dist/single/workers.js`**，可将完整代码粘贴到 Cloudflare **ES Module Worker** 编辑器中保存并部署。无需上传其他前端文件、安装运行时 npm 包或绑定 ASSETS；仍需配置 **ADMIN、ADMIN_PATH 和 KV**。文件使用平台内置 `cloudflare:sockets`。
+
+单文件构建包含以下处理：
+
+- 前端 JavaScript 压缩与混淆、CSS 压缩，Worker 压缩与混淆；最终 workers.js 为**单行紧凑输出**，保留许可证和上游署名。
+- 公开前端资源先 gzip，再用 AES-256-GCM 加密；每次构建随机生成密钥，各资源使用独立 IV，路径、MIME、原始大小和 ETag 参与认证。
+- 请求时解密、解压；每个 Worker 实例通过 LRU 缓存完成的公开资源字节，最多 **8 MiB / 64 项**，超大资源和失败结果不缓存。不缓存请求、登录状态、用户配置或注入前缀后的 HTML。
+- HTML 返回 `no-store`；静态资源支持 HEAD 和 ETag，缺失资源返回 404。
+- 按 `.assetsignore` 收集公开资源，排除环境文件、密钥、source map、构建配置和测试代码。
+
+密钥随产物内置，以便直接粘贴运行。加密与混淆增加分析成本，不提供源码保密保证；浏览器收到的页面和 JS/CSS 仍可查看。真实密码和代理凭据继续保存在运行时配置中。两种构建均不输出 source map，不使用 eval、反调试、自保护或垃圾代码；动态导入路径保持可供 Vite 分析，确保页面 CSS 正常加载。
+
+`dist/` 为已忽略的构建目录，不提交产物。单文件构建不改变标准构建和自动部署流程。
+
+### GitHub 自动部署
+
+当前仓库使用 Cloudflare Workers Builds 连接 `alanyangcn/prometheus`，生产分支为 `main`：
+
+| 项目 | 配置 |
+| --- | --- |
+| 构建命令 | `npm ci && npm test && npm run build` |
+| 部署命令 | `npx wrangler deploy` |
+| KV 绑定名 | `KV` |
+| 管理密码 | Worker Secret `ADMIN` |
+
+main 更新后由 Cloudflare 原生 Git 集成构建和部署，部署凭据由 Cloudflare 管理。GitHub Actions 的 `.github/workflows/ci.yml` 负责测试和构建。Fork 后需为自己的仓库与 Cloudflare 账户建立连接。
+
+## 验证
 
 ```bash
 npm test
 npm run build
 npx wrangler deploy --dry-run
+npm run test:single
 ```
 
-经核验并完成生产绑定后，执行 `npx wrangler login` 和 `npm run deploy`。开发文件不是生产 secrets；通过 Wrangler 或 Cloudflare 控制台配置生产 ADMIN/KEY/UUID。
+`npm test` 覆盖协议、配置、鉴权、管理路由、日志、Toast、嵌入资源及资源收集。`test:single` 重新构建，检查单行输出、动态导入及页面 CSS 依赖，并使用 Wrangler 自带的本地 Cloudflare 运行时执行实际 workers.js，验证页面、API 和嵌入资源。
 
-## 功能边界
+自动化检查与真实客户端、浏览器视觉及外部服务的验证范围分别记录在 [功能矩阵](docs/feature-matrix.md)。测试代码和测试依赖不参与生产打包。
 
-保留 VLESS/Trojan/Shadowsocks，WS/gRPC/XHTTP，ProxyIP 与 SOCKS5/HTTP/HTTPS/TURN/SSTP 上游代理，节点与订阅生成、地址库、配置和日志。实际支持组合和验证状态见功能矩阵。
+## 日志与外部服务
 
-UDP 支持受原协议实现与 Workers 平台约束；订阅的 Clash/Sing-box 等转换仍可能调用配置的外部转换服务。没有承诺任意原生 UDP 或所有组合。
+日志记录管理访问（Admin_Login）、保存配置（Save_Config）、保存地址（Save_Custom_IPs）、重置配置（Init_Config）及订阅获取（Get_SUB）。管理访问按 IP、URL、UA 在 30 分钟内去重；保存和重置每次成功记录。`OFF_LOG=true` 或 `1` 关闭 KV 日志。日志 URL 脱敏，不记录密码和请求体；界面显示时间（UTC+8）、IP、地区和操作。
 
-## 环境变量
+摄影首页通过 Lorem Picsum API 获取远程图片，点击跳转到 Unsplash 来源，仓库不存储照片。订阅转换、优选生成器、公共代理目录、路径模板、DNS/DoH、BestCF 和 IP 信息查询使用外部服务，相关配置可按功能调整。浏览器诊断受到本地网络、分流规则及 CORS 限制；站点延迟表示浏览器请求耗时。二维码在本地生成，不向二维码网站发送订阅 TOKEN。
 
-| 名称 | 用途 |
-| --- | --- |
-| ADMIN | 管理员密码（必需） |
-| ADMIN_PATH | 管理网页的单层路径前缀，例如 `as` 对应 `/as/spark`；未设置或无效时关闭管理网页入口 |
-| KEY | 快速订阅路径密钥及旧身份派生兼容 |
-| UUID | 可选固定 UUIDv4 |
-| HOST / PATH | 节点域名与路径覆盖 |
-| PROXYIP | 用户配置的上游反代地址 |
-| GO2SOCKS5 | 上游代理域名匹配名单 |
-| DEBUG / OFF_LOG | 调试与禁用 KV 日志 |
-| BEST_SUB | 优选订阅生成器模式 |
-| PRELOAD_RACE_DIAL | 预加载竞速拨号 |
-| TCP_CONCURRENT_DIAL / PROXY_CONCURRENT_DIAL | 并发拨号参数 |
+## 项目结构
 
-不设置生产密码或代理凭据的默认值。保留旧变量别名仅为兼容，推荐使用表中名称。
-
-## 外部服务
-
-迁移保留的默认外部地址来源包括原项目公共 ProxyIP 解析、订阅转换端/规则、优选生成器；DNS 转发及 DoH 也需要外部网络。可在配置中替换相关服务。公共服务可能不可用，项目不保证其 SLA。
-
-管理工具按用户点击读取参考项目维护的代理目录、转换服务/规则和路径模板、BestCF 探测服务及 ipapi.is 信息。摄影首页从 Lorem Picsum API 获取照片列表及远程图片，点击照片跳转到 Unsplash 来源，不把图片存入仓库。浏览器优选和网络诊断从当前浏览器发起探测，结果受到本地 DNS、TLS、代理出口和 CORS 限制；不会把无法读取的响应算作优选测速成功。站点延迟测试只记录浏览器请求耗时，不能证明目标 HTTP 状态。二维码在本地生成，不把订阅 token 发送到二维码网站。
-
-
-管理界面随 Vue 构建发布，运行时不依赖 edt-pages.github.io 提供管理 HTML。摄影首页与管理界面独立打包。已移除 Telegram 通知、Cloudflare 请求用量、Snippet 生成及本地优选工具下载目录。Telegram.DC5 浏览器延迟测试仍保留。
-
-## 结构
-
-- `src/`：独立摄影入口与 Vue 管理界面、路由、Pinia 状态；共享玻璃弹窗、自定义选择框、勾选框与 Toast。
-- `server/`：请求路由、认证、配置、协议、传输、代理与日志模块。
-- `shared/`：公共类型。
-- `test/`：协议兼容、管理 API、路由、日志与 Toast 队列测试。
-- `docs/`：设计、实施进度、功能矩阵。
-- `reference/`：原始参考仓库，不参与构建。
-
-## 开发与许可证
-
-开发约定见 AGENTS.md。核心迁移来源 `cmliu/edgetunnel`，基线 `a8ab111`。保留 GPL v2 许可及原算法归属，见 LICENSE 和 THIRD_PARTY_NOTICES.md。
-
-## GitHub 自动部署
-
-Cloudflare Workers Builds 已连接 `alanyangcn/prometheus`，生产分支为 `main`。
-
-- 构建命令：`npm ci && npm test && npm run build`
-- 部署命令：`npx wrangler deploy`
-- 生产 KV：`prometheus`，绑定名 `KV`。
-- 生产管理员密码：Worker Secret `ADMIN`；不写入仓库。
-
-main 更新后由 Cloudflare 原生 Git 集成构建和部署，部署凭据由 Cloudflare 管理，无需另行配置 GitHub 部署 Token。`.github/workflows/ci.yml` 只负责测试与构建。
-
-## 生产构建压缩与混淆
-
-`npm run build` 对 Worker 和浏览器 JavaScript 执行压缩，对 CSS 执行压缩；`build/obfuscation.ts` 只对浏览器产物应用标识符和字符串数组混淆，在最终文件哈希计算前执行。开发模式不执行混淆，生产构建不输出 sourcemap。
-
-混淆使用 `javascript-obfuscator`，不启用 eval、反调试、自保护、垃圾代码或控制流扁平化。Worker 网络及密码学算法只进行压缩。混淆可能增加前端体积，也不提供密码或源码保密保证；本项目源码仍公开并保留 GPL 许可。
-
-## 前端入口
-
-摄影首页通过 `index.html` → `src/photography.ts` 独立构建，只加载摄影页面及主题模块，不注册管理路由或 Pinia。管理界面通过 `admin.html` → `src/main.ts` 单独构建。Worker 将运行时 `ADMIN_PATH` 注入管理 HTML，Vue Router 根据该前缀生成链接，登录、退出、刷新和管理深链接均使用同一前缀。首页不包含前缀。
-
-在本地 `.dev.vars` 或 Cloudflare 运行时变量/密钥中配置：
-
-```dotenv
-ADMIN_PATH="as"
+```text
+src/        摄影入口与 Vue 管理界面、路由、状态及共享控件
+server/     Worker 路由、认证、配置、协议、传输、代理、订阅和日志
+shared/     公共类型
+build/      混淆、资源收集、加密及单文件构建脚本
+test/       行为测试与实际构建产物测试
+docs/       功能矩阵、设计和历史验证记录
+reference/  独立参考仓库，不参与构建
 ```
 
-例如登录地址为 `/as/spark`，管理概览为 `/as/Illumination`，设置页为 `/as/Illumination/settings`。前缀允许 1–64 个英文字母、数字、下划线或短横线，也可输入 `/as/`。不能使用 API、静态资源或协议端点的保留名称。未设置、空值或无效值时管理网页返回实际 HTTP 404。尚未访问正确前缀的浏览器，访问旧 `/login`、`/admin`、`/setup`、直接访问 `/admin.html` 或错误前缀时返回 404，不会通过重定向泄露入口。首次访问正确前缀的网页时设置带签名的 HttpOnly Cookie，记录发现入口，有效期固定为 30 分钟，刷新和跳转不会续期。标识有效时访问前缀外的其他网页会跳转到当前前缀下的登录页；首页、静态资源、API、订阅与隧道不受影响。到期后恢复 404，重新访问正确前缀才创建新记录。修改 ADMIN_PATH 会使旧标识失效，该标识不授予登录权限。
-
-正确前缀内的管理页面未登录时重定向到该前缀下的登录页，旧初始化路径 `/as/setup` 也重定向到登录页。ADMIN、KV 配置提示弹窗在登录页展示。原有管理诊断与配置兼容路径也使用此前缀。修改运行时变量后无需重新打包前端；本地开发需要开发服务重新读取环境变量。
-
-两个入口仅共享 Vue 运行时、主题逻辑等公共模块，不互相导入业务代码。生产构建保留压缩、混淆并关闭 source map。摄影首页及静态 JS/CSS 公开，管理静态资源尚未增加资源鉴权。订阅、隧道与 `/api/*` 保留原有地址和鉴权规则，避免网页前缀破坏客户端连接。
-
-## 管理页面与交互
-
-管理导航顺序为概览、网络信息、节点配置、优选订阅、订阅转换、ECH、Cloudflare CDN、日志。地址库、订阅 API 导入、链式节点及浏览器优选在优选订阅页统一编辑保存；代理与路径模板在 Cloudflare CDN 页，转换后端与规则在订阅转换页。
-
-管理页面及弹窗采用支持明暗主题的液态玻璃样式；选择框和勾选框使用统一样式，操作反馈通过 Toast 队列展示。概览的订阅链接点击复制，二维码通过弹窗展示并支持保存。网络信息页直接显示诊断和连接信息；访问该页会发起浏览器网络及站点延迟测试。移动端菜单收纳模式切换和配置重置，配置重置需确认。
-
-日志记录管理配置访问（Admin_Login）、保存配置（Save_Config）、保存地址（Save_Custom_IPs）、重置配置（Init_Config）及订阅访问（Get_SUB）。管理访问按 IP、URL、UA 在 30 分钟内去重，保存和重置每次记录；OFF_LOG 为 true 或 1 时关闭 KV 日志。日志 URL 会脱敏，不记录密码和请求体。日志页显示时间（UTC+8）、IP、地区和操作。
-
-自动化测试覆盖逻辑和 Worker 行为，不代替浏览器视觉、触屏、原生弹窗与自定义选择框交互检查，也不证明第三方网络服务可用。
+开发约定见 [AGENTS.md](AGENTS.md)。迁移基线为 cmliu/edgetunnel `a8ab111`，保留 GPL v2 许可与上游算法归属，见 [LICENSE](LICENSE) 和 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。

@@ -96,7 +96,7 @@ pre { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 13px; backgroun
 @media (prefers-reduced-transparency: reduce) { .illumination-shell .tabs { -webkit-backdrop-filter: none; backdrop-filter: none; background: #f1f5fc; } :root[data-theme=dark] .illumination-shell .tabs { background: #1c2b3c; } }
 @media (prefers-reduced-motion: reduce) { .illumination-shell .tabs a { transition: none; } }
 
-/* Glass surfaces shared by all Illumination tools and settings pages. */
+/* Glass surfaces shared by all illumination tools and settings pages. */
 .illumination-shell .management-page { min-width: 0; }
 .illumination-shell .management-page > h1 { font-size: clamp(27px, 4vw, 39px); font-weight: 600; letter-spacing: -1px; margin: 0 0 28px; }
 .illumination-shell .management-page > .intro { font-size: 13px; line-height: 1.9; color: #7b8ba4; margin: 0 0 28px; max-width: 850px; }

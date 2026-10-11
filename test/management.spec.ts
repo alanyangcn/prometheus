@@ -80,7 +80,7 @@ describe('Subscriptions and routing compatibility', () => {
     const f = fixture();
     const env = { ...f.env, ASSETS: { fetch: async () => new Response('<html>local-app</html>', { headers: { 'Content-Type': 'text/html' } }) } };
     const ctx = createExecutionContext();
-    const response = await worker.fetch(new Request('https://example.com/test-entry/Illumination/settings'), env as any, ctx);
+    const response = await worker.fetch(new Request('https://example.com/test-entry/illumination/settings'), env as any, ctx);
     expect(response.status).toBe(302);
     expect(response.headers.get('Location')).toBe('/test-entry/spark');
   });
@@ -159,12 +159,12 @@ it('serves the network deep link only after login and keeps the public homepage 
     const response = await worker.fetch(new Request(`https://example.com${path}`, { headers: session ? { Cookie: session, 'User-Agent': 'prometheus-test' } : {} }), env as any, ctx);
     await waitOnExecutionContext(ctx); return response;
   }
-  const anonymous = await page('/test-entry/Illumination/network');
+  const anonymous = await page('/test-entry/illumination/network');
   expect(anonymous.status).toBe(302); expect(anonymous.headers.get('Location')).toBe('/test-entry/spark');
-  const authorized = await page('/test-entry/Illumination/network', cookie);
+  const authorized = await page('/test-entry/illumination/network', cookie);
   expect(authorized.status).toBe(200);
   const html = await authorized.text(); expect(html).toContain('/admin.html'); expect(html).toContain('content="/test-entry/"');
   const home = await page('/'); expect(home.status).toBe(200);
   expect(await home.text()).toContain('/index.html');
-  expect((await page('/wrong/Illumination/network')).status).toBe(404);
+  expect((await page('/wrong/illumination/network')).status).toBe(404);
 });

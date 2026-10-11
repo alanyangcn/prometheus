@@ -80,3 +80,19 @@ HOSTS 通过域名输入框打开编辑弹窗；UUID 只读并提供说明；PAT
 ### 本轮验证（2026-10-11）
 
 新增日志去重/重复修改/OFF_LOG、管理日志鉴权审计、网络信息深链接与 Toast 队列回归测试。本轮 `npm test` 共 85 项通过；`npm run build`（含类型检查）和 `npx wrangler deploy --dry-run` 通过。此记录不代表生产部署或所有浏览器视觉交互已验证。
+
+### 可选单文件构建（2026-10-11）
+
+新增 `npm run build:single`，保持正常构建和部署不变。输出 `dist/single/workers.js`，嵌入前端公开资源并复用现有 Worker，目标环境不需要 ASSETS 绑定。ADMIN / ADMIN_PATH / KV 仍在运行时配置。新增资源响应、单文件鉴权和构建目录排除测试；`npm run test:single` 使用实际生成文件运行本地 Cloudflare 运行时，验证页面、API 和静态资源。未在生产 Cloudflare 编辑器中粘贴部署。
+
+本轮验证：`npm test`（91 项 Worker/Vue 逻辑测试 + 5 项资源收集测试）、`npm run test:single`（1 项实际产物集成测试）通过，共 97 项；正常与单文件模式的 Wrangler dry-run 均通过。产物当前约 744 KiB，嵌入 29 个公开前端资源，未部署。
+
+### 单文件混淆与资源加密（2026-10-11）
+
+`build:single` 对 Worker 使用现有 javascript-obfuscator（无 eval / 反调试 / 属性重命名），前端资源 gzip 后 AES-256-GCM 加密，随机构建密钥、独立资源 IV，路径和 MIME/大小/ETag 参与认证；运行时惰性导入密钥、认证解密并解压。缺失密钥、IV、篡改及路径迁移均拒绝返回资源并禁用缓存。密钥内置产物，只增加分析成本，不提供源码保密；默认构建保持不变。
+
+本轮 `npm test`（94 项逻辑测试 + 6 项构建测试）、`npm run test:single`（1 项实际混淆/加密产物验证）通过，共 101 项；类型检查、正常及单文件 Wrangler dry-run 均通过。尚未生产部署。
+
+### 2026-10-11 资源缓存与无用代码清理
+
+单文件资源使用有上限的 LRU 解密/解压字节缓存（8 MiB、64 项）；不缓存错误或请求相关内容。移除未使用的 PersistedSection、RequestScope、setProxyMode 和 formatIdentifier；保留实际代理模式与协议功能。

@@ -9,6 +9,7 @@ import SubscriptionApiImport from './SubscriptionApiImport.vue';
 import SubscriptionChainProxy from './SubscriptionChainProxy.vue';
 const addresses = defineModel<string>('addresses', { required: true });
 const helper = ref('');
+const chainProxy = ref<InstanceType<typeof SubscriptionChainProxy> | null>(null);
 const optimizerDialog = ref<HTMLDialogElement | null>(null);
 const optimizing = ref(false);
 async function openOptimizer() { optimizing.value = true; await nextTick(); optimizerDialog.value?.showModal(); }
@@ -39,9 +40,9 @@ const mode = computed({ get: () => subscriptionMode(props.model), set: (mode: Su
 104.24.0.232:8443#优选IPv4
 [2606:4700::]:2053#优选IPv6" required /></div>
     <div class="field"><label for="preferred-upload">导入本地文本</label><input id="preferred-upload" type="file" accept=".txt,.csv,text/plain" @change="upload" /></div>
-    <div class="actions"><button type="button" class="secondary" @click="openOptimizer">开始优选</button><button type="button" class="secondary" @click="exportAddresses">导出地址文本</button><button type="button" class="secondary" :aria-expanded="helper === 'api'" @click="helper = helper === 'api' ? '' : 'api'">订阅接口</button><button type="button" class="secondary" :aria-expanded="helper === 'chain'" @click="helper = helper === 'chain' ? '' : 'chain'">链式代理</button></div>
+    <div class="actions"><button type="button" class="secondary" @click="openOptimizer">开始优选</button><button type="button" class="secondary" @click="exportAddresses">导出地址文本</button><button type="button" class="secondary" :aria-expanded="helper === 'api'" @click="helper = helper === 'api' ? '' : 'api'">订阅接口</button><button type="button" class="secondary" aria-haspopup="dialog" @click="chainProxy?.open()">链式代理</button></div>
     <SubscriptionApiImport v-if="helper === 'api'" v-model="addresses" />
-    <SubscriptionChainProxy v-if="helper === 'chain'" v-model="addresses" />
+    <SubscriptionChainProxy ref="chainProxy" v-model="addresses" />
   </template>
   <div v-if="mode === 'generator'" class="field"><label for="generator-url">优选订阅生成器</label><input id="generator-url" v-model="sub.SUB" placeholder="sub.cmliussss.net" required /><p class="hint">可填写域名或完整 URL，保存时提取域名。</p></div>
   <Teleport to="body"><dialog v-if="optimizing" ref="optimizerDialog" v-glass-dialog class="optimizer-dialog glass-dialog" aria-labelledby="optimizer-title" @close="optimizing = false"><div class="optimizer-heading"><h2 id="optimizer-title">在线优选 IP</h2><button type="button" class="secondary" @click="closeOptimizer">返回优选订阅</button></div><SubscriptionOptimizer v-model="addresses" /></dialog></Teleport>

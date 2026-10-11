@@ -112,11 +112,5 @@ runtime.parseVless = function 解析魏烈思请求(chunk, token) {
     const rawIndex = addrValIdx + addrLen;
     return { hasError: false, addressType, port, hostname, isUDP, rawClientData: data.subarray(rawIndex), version };
 };
-  },
-  (runtime) => {
-runtime.formatIdentifier = function formatIdentifier(arr, offset = 0) {
-    const hex = [...arr.slice(offset, offset + 16)].map(b => b.toString(16).padStart(2, '0')).join('');
-    return `${hex.substring(0, 8)}-${hex.substring(8, 12)}-${hex.substring(12, 16)}-${hex.substring(16, 20)}-${hex.substring(20)}`;
-};
   }
 ];

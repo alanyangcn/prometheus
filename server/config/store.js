@@ -36,7 +36,7 @@ runtime.readConfig = async function 读取config_JSON(env, hostname, userID, UA 
                 指定端口: -1,
             },
             SUB: null,
-            SUBNAME: "edge" + "tunnel",
+            SUBNAME: host,
             SUBUpdateTime: 3,
             TOKEN: await runtime.hashIdentity(hostname + userID),
         },
@@ -116,6 +116,8 @@ runtime.readConfig = async function 读取config_JSON(env, hostname, userID, UA 
     if (!runtime.config_JSON.gRPCUserAgent)
         runtime.config_JSON.gRPCUserAgent = UA;
     runtime.config_JSON.HOST = host;
+    if (!String(runtime.config_JSON.优选订阅生成.SUBNAME || '').trim())
+        runtime.config_JSON.优选订阅生成.SUBNAME = host;
     if (!runtime.config_JSON.HOSTS)
         runtime.config_JSON.HOSTS = [hostname];
     if (env.HOST)
