@@ -3,7 +3,7 @@ import type { TunnelRuntime } from '../types';
 
 export const DEFAULT_KEY = '勿动此默认密钥，有需求请自行通过添加变量KEY进行修改';
 export function administrator(env: WorkerEnv): string {
-  return env.ADMIN || env.admin || env.PASSWORD || env.password || env.pswd || env.TOKEN || env.KEY || env.UUID || env.uuid || '';
+  return env.GO_ON || env.admin || env.PASSWORD || env.password || env.pswd || env.TOKEN || env.KEY || env.UUID || env.uuid || '';
 }
 export async function identity(runtime: TunnelRuntime, env: WorkerEnv, hostname: string) {
   const admin = administrator(env);

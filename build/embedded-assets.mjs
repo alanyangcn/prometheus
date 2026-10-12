@@ -38,6 +38,6 @@ export async function collectAssets(root) {
     }
   }
   await walk(root);
-  for (const entry of ['/index.html', '/admin.html']) if (!manifest[entry]) throw new Error(`Missing frontend entry ${entry}; run npm run build first.`);
+  for (const entry of ['/index.html', '/admin.html']) if (!manifest[entry]) throw new Error(`Missing frontend entry ${entry}; run pnpm run build first.`);
   return manifest;
 }

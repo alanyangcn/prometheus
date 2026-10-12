@@ -10,7 +10,7 @@ runtime.recordLog = async function 请求日志记录(env, request, 访问IP, �
         if (!是否写入KV日志)
             return;
         let 日志数组 = [];
-        const 现有日志 = await env.KV.get('log.json'), KV容量限制 = 4;
+        const 现有日志 = await env.STORAGE.get('log.json'), KV容量限制 = 4;
         if (现有日志) {
             try {
                 日志数组 = JSON.parse(现有日志);
@@ -38,7 +38,7 @@ runtime.recordLog = async function 请求日志记录(env, request, 访问IP, �
         else {
             日志数组 = [日志内容];
         }
-        await env.KV.put('log.json', JSON.stringify(日志数组, null, 2));
+        await env.STORAGE.put('log.json', JSON.stringify(日志数组, null, 2));
     }
     catch (error) {
         console.error(`日志记录失败: ${error.message}`);

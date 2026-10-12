@@ -3,16 +3,16 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "deploy": "npm run build && wrangler deploy",
+    "deploy": "pnpm run build && wrangler deploy",
     "dev": "vite",
     "start": "vite",
     "test": "vitest run && node --test test/embedded-build.node.mjs",
     "cf-typegen": "wrangler types",
-    "build": "npm run typecheck && vite build",
+    "build": "pnpm run typecheck && vite build",
     "typecheck": "vue-tsc --noEmit && tsc -p tsconfig.worker.json",
     "preview": "vite preview",
-    "build:single": "npm run build && node build/single-file.mjs",
-    "test:single": "npm run build:single && node --test test/frontend-build.node.mjs test/single-file-artifact.node.mjs"
+    "build:single": "pnpm run build && node build/single-file.mjs",
+    "test:single": "pnpm run build:single && node --test test/frontend-build.node.mjs test/single-file-artifact.node.mjs"
   },
   "devDependencies": {
     "@cloudflare/vite-plugin": "^1.63.1",
@@ -33,5 +33,6 @@
     "vue": "^3.5.43",
     "vue-router": "^5.4.0"
   },
-  "type": "module"
+  "type": "module",
+  "packageManager": "pnpm@12.9.1"
 }

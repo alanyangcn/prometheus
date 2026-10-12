@@ -8,7 +8,7 @@ import { hasEntryMarker, recordEntry } from './auth/entry-marker';
 const legacyManagementPaths = new Set(['/admin/config.json', '/admin/ADD.txt', '/admin/log.json', '/admin/init', '/admin/getADDAPI', '/admin/check']);
 const managementPages = new Set(['/spark', '/illumination', '/illumination/network', '/illumination/settings', '/illumination/subscription', '/illumination/ech', '/illumination/cdn', '/illumination/conversion', '/illumination/logs']);
 function managementBase(env: WorkerEnv): string {
-  const value = env.ADMIN_PATH?.trim().replace(/^\/+|\/+$/g, '') || '';
+  const value = env.BASE_PATH?.trim().replace(/^\/+|\/+$/g, '') || '';
   // One URL-safe segment; never collide with assets, API or protocol endpoints.
   if (!/^[A-Za-z0-9_-]{1,64}$/.test(value) || /^(api|assets|src|node_modules|@.*|sub|version|locations|robots\.txt|login|admin|spark|illumination|setup|logout)$/i.test(value)) return '';
   return '/' + value;
@@ -24,7 +24,7 @@ export default {
     const prefixed = !!base && (url.pathname === base || url.pathname.startsWith(base + '/'));
     const pagePath = prefixed ? url.pathname.slice(base.length) || '/' : '';
     const serveApp = async (incoming: Request, path: string) => {
-      if (!env.ASSETS) return new Response('Prometheus: build frontend assets with npm run build.', { status: 503 });
+      if (!env.ASSETS) return new Response('Prometheus: build frontend assets with pnpm run build.', { status: 503 });
       const adminPage = managementPages.has(path) || path === '/setup';
       if (adminPage && !base) return notFound();
       const target = new URL(incoming.url);
@@ -62,7 +62,7 @@ export default {
       if (prefixed && !upgrade && read) {
         if (pagePath === '/setup' || pagePath === '/') return rememberEntry(redirectToLogin());
         if (managementPages.has(pagePath)) {
-          if (pagePath !== '/spark' && (!env.KV || !await authenticated(runtime, request, env))) return rememberEntry(redirectToLogin());
+          if (pagePath !== '/spark' && (!env.STORAGE || !await authenticated(runtime, request, env))) return rememberEntry(redirectToLogin());
           return rememberEntry(await serveApp(request, pagePath));
         }
         // Browser navigation to any other path within the management prefix requires login.
@@ -76,7 +76,7 @@ export default {
       if (response) return response;
       if (url.pathname.startsWith('/api/')) return Response.json({ error: 'Not found' }, { status: 404 });
       const tunnel = upgrade || request.method === 'POST';
-      if (tunnel && !administrator(env)) return Response.json({ error: '请先配置 ADMIN' }, { status: 503 });
+      if (tunnel && !administrator(env)) return Response.json({ error: '请先配置 GO_ON' }, { status: 503 });
       if (!tunnel && url.pathname === '/') return serveApp(request, '/');
       const legacyRoutes = ['/sub', '/version', '/locations', '/robots.txt'];
       const quickSubscription = env.KEY && url.pathname === '/' + env.KEY;

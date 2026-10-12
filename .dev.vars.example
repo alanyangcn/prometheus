@@ -1,6 +1,6 @@
 # Local development only. Copy to .dev.vars and set your own password.
-ADMIN=""
+GO_ON=""
 # Management page prefix: as -> /as/spark. Empty disables management pages.
-ADMIN_PATH=""
+BASE_PATH=""
 # UUID="your-uuid-v4"
 # OFF_LOG="true"

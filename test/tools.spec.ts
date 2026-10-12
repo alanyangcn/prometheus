@@ -5,7 +5,7 @@ import { normalizeIP, abuseScore, maskIP, locationMap } from '../src/features/to
 import { proxyConfiguration, proxyIPConfiguration } from '../src/features/tools/proxies';
 import { probeNetwork, measureLatency, latencyLoop } from '../src/features/tools/network';
 import { chainLine, parseChainInput } from '../src/features/tools/chain';
-const env = { KV: { get: async () => null } };
+const env = { STORAGE: { get: async () => null } };
 async function tool(action: string, data: unknown = {}, runtime: unknown = {}) { return tools(new Request(`https://example.com/api/tools/${action}`, { method: 'POST', body: JSON.stringify(data) }), env as any, runtime as any, {} as any); }
 afterEach(() => vi.unstubAllGlobals());
 describe('Controlled administration tools', () => {

@@ -62,9 +62,9 @@ export async function management(request: Request, env: WorkerEnv, runtime: Tunn
     if (origin && origin !== url.origin) return json({ error: '拒绝跨站请求' }, 403);
     if (!['POST', 'PUT'].includes(request.method)) return json({ error: '不支持此方法' }, 405);
   }
-  if (path === '/api/session') return json({ configured: !!administrator(env), authenticated: await authenticated(runtime, request, env), storage: !!env.KV });
+  if (path === '/api/session') return json({ configured: !!administrator(env), authenticated: await authenticated(runtime, request, env), storage: !!env.STORAGE });
   if (path === '/api/login' || (originalPath === '/login' && write)) {
-    const missing = [...(!administrator(env) ? ['ADMIN'] : []), ...(!env.KV ? ['KV'] : [])];
+    const missing = [...(!administrator(env) ? ['GO_ON'] : []), ...(!env.STORAGE ? ['STORAGE'] : [])];
     if (missing.length) return json({ error: `请先配置 ${missing.join(' 和 ')}` }, 503);
     if (!write) return json({ error: '请使用 POST' }, 405);
     let password: unknown;
@@ -84,7 +84,7 @@ export async function management(request: Request, env: WorkerEnv, runtime: Tunn
   const known = ['/api/config', '/api/config/reset', '/api/addresses', '/api/logs', '/api/proxy-check'];
   if (!known.includes(path) && !path.startsWith('/api/tools/')) return null;
   if (!await authenticated(runtime, request, env)) return json({ error: '请先登录' }, 401);
-  if (!env.KV) return json({ error: '请绑定 KV 命名空间' }, 503);
+  if (!env.STORAGE) return json({ error: '请绑定 STORAGE 命名空间' }, 503);
   const id = await identity(runtime, env, url.hostname);
   const record = (event: string) => {
     ctx.waitUntil((async () => {
@@ -118,13 +118,13 @@ export async function management(request: Request, env: WorkerEnv, runtime: Tunn
       validateConfig(update, config);
       const saved = merge(config, update);
       if (saved.协议类型 === 'ss' && saved.传输协议 !== 'ws') throw new Error('Shadowsocks 仅支持 WebSocket 传输');
-      await env.KV.put('config.json', JSON.stringify(saved));
+      await env.STORAGE.put('config.json', JSON.stringify(saved));
       record('Save_Config');
       return json({ success: true });
     }
     if (path === '/api/addresses') {
       if (!write) {
-        const text = await env.KV.get('ADD.txt') || '';
+        const text = await env.STORAGE.get('ADD.txt') || '';
         if (originalPath === '/admin/ADD.txt') return new Response(text, { headers: { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store' } });
         return json({ text });
       }
@@ -132,13 +132,13 @@ export async function management(request: Request, env: WorkerEnv, runtime: Tunn
       if (originalPath === '/admin/ADD.txt') text = await request.text();
       else { const data = await body(request); text = object(data) ? data.text : null; }
       if (typeof text !== 'string' || text.length > 1024 * 1024) throw new Error('地址库必须是文本且不超过 1 MiB');
-      await env.KV.put('ADD.txt', text);
+      await env.STORAGE.put('ADD.txt', text);
       record('Save_Custom_IPs');
       return json({ success: true });
     }
     if (path === '/api/logs') {
       if (write) return json({ error: '日志接口只读' }, 405);
-      return json(JSON.parse(await env.KV.get('log.json') || '[]'));
+      return json(JSON.parse(await env.STORAGE.get('log.json') || '[]'));
     }
     return json({ error: 'Not found' }, 404);
   } catch (error) {

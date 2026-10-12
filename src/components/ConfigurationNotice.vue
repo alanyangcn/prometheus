@@ -14,7 +14,7 @@ async function checkConfiguration() {
   error.value = '';
   try {
     const state = await session.refresh();
-    missing.value = [...(!state.configured ? ['ADMIN'] : []), ...(!state.storage ? ['KV'] : [])];
+    missing.value = [...(!state.configured ? ['GO_ON'] : []), ...(!state.storage ? ['STORAGE'] : [])];
     await nextTick();
     if (missing.value.length && dialog.value && !dialog.value.open) {
       dialog.value.showModal();
@@ -36,8 +36,8 @@ onUnmounted(() => removeGlass?.());
 
   <dialog ref="dialog" class="configuration-dialog" tabindex="-1" autofocus aria-labelledby="configuration-title">
     <h2 id="configuration-title">{{ title }}</h2>
-    <p v-if="missing.includes('ADMIN')">需要设置 <strong>ADMIN</strong> 参数，用作管理员密码。</p>
-    <p v-if="missing.includes('KV')">需要设置 <strong>KV</strong>，绑定名称必须为 <code>KV</code>。</p>
+    <p v-if="missing.includes('GO_ON')">需要设置 <strong>GO_ON</strong> 参数，用作管理员密码。</p>
+    <p v-if="missing.includes('STORAGE')">需要设置 <strong>STORAGE</strong>，绑定名称必须为 <code>STORAGE</code>。</p>
     <p class="hint">配置完成后，点击“重新检查”确认配置状态。</p>
 
     <div class="actions"><button type="button" :disabled="checking" @click="checkConfiguration">{{ checking ? '检查中…' : '重新检查' }}</button><button type="button" class="secondary" @click="dialog?.close()">知道了</button></div>

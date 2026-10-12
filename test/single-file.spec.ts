@@ -49,7 +49,7 @@ describe('embedded assets', () => {
 describe('single-file Worker without ASSETS binding', () => {
   function fixture() {
     const data = new Map<string, string>();
-    const env = { ADMIN: 'single-file-test-password', ADMIN_PATH: 'entry', UUID: '90cd4a77-141a-43c9-991b-08263cfe9c10', KV: {
+    const env = { GO_ON: 'single-file-test-password', BASE_PATH: 'entry', UUID: '90cd4a77-141a-43c9-991b-08263cfe9c10', STORAGE: {
       get: async (key: string) => data.get(key) ?? null,
       put: async (key: string, value: string) => { data.set(key, value); },
     } };
@@ -77,7 +77,7 @@ describe('single-file Worker without ASSETS binding', () => {
     const f = fixture();
     expect(await (await f.request('/entry/spark')).text()).toContain('content="/entry/"');
     const ctx = createExecutionContext();
-    const response = await f.worker.fetch(new Request('https://example.com/other/spark'), { ...f.env, ADMIN_PATH: 'other' } as any, ctx);
+    const response = await f.worker.fetch(new Request('https://example.com/other/spark'), { ...f.env, BASE_PATH: 'other' } as any, ctx);
     const html = await response.text();
     expect(html).toContain('content="/other/"'); expect(html).not.toContain('content="/entry/"');
     await waitOnExecutionContext(ctx);
@@ -87,7 +87,7 @@ describe('single-file Worker without ASSETS binding', () => {
     const anonymous = await f.request('/entry/illumination/network');
     expect(anonymous.status).toBe(302); expect(anonymous.headers.get('Location')).toBe('/entry/spark');
     expect((await f.request('/api/config')).status).toBe(401);
-    const login = await f.request('/api/login', { password: f.env.ADMIN });
+    const login = await f.request('/api/login', { password: f.env.GO_ON });
     expect(login.status).toBe(200); const cookie = login.headers.get('Set-Cookie')!.split(';')[0];
     expect((await f.request('/entry/illumination/network', undefined, cookie)).status).toBe(200);
     expect((await f.request('/api/config', { 协议类型: 'trojan' }, cookie)).status).toBe(200);
@@ -117,6 +117,19 @@ describe('encrypted embedded assets', () => {
     const manifest = { [path]: { body: base64(ciphertext), iv: base64(iv), compression: 'gzip' as const, type, size, etag } };
     return { path, manifest, key: base64(raw) };
   }
+  it('reconstructs split keys and rejects missing or tampered shares', async () => {
+    const f = await fixture();
+    const raw = Uint8Array.from(atob(f.key), char => char.charCodeAt(0));
+    const mask = crypto.getRandomValues(new Uint8Array(32));
+    const base64 = (bytes: Uint8Array) => btoa(String.fromCharCode(...bytes));
+    const parts: [string, string] = [base64(mask), base64(raw.map((byte, index) => byte ^ mask[index]))];
+    const response = await createEmbeddedAssets(f.manifest, { parts }).fetch(new Request('https://example.com' + f.path));
+    expect(await response.text()).toBe('加密资源');
+    for (const key of [{ parts: [parts[0]] }, { parts: [parts[0], 'AA=='] }, { parts: [parts[0], base64(new Uint8Array(32))] }]) {
+      const response = await createEmbeddedAssets(f.manifest, key as any).fetch(new Request('https://example.com' + f.path));
+      expect(response.status).toBe(500); expect(response.headers.get('Cache-Control')).toBe('no-store');
+    }
+  });
   it('reuses completed decryption results with independent response bodies', async () => {
     const f = await fixture(); const binding = createEmbeddedAssets(f.manifest, f.key);
     const decrypt = vi.spyOn(crypto.subtle, 'decrypt');

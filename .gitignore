@@ -36,4 +36,7 @@ Thumbs.db
 *.swp
 *.swo
 
-# Keep package locks and source/type declarations tracked
+# pnpm is the project package manager
+/package-lock.json
+
+# Keep pnpm lock/config files and source/type declarations tracked

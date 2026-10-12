@@ -16,7 +16,7 @@
   "keep_vars": true,
   "kv_namespaces": [
     {
-      "binding": "KV",
+      "binding": "STORAGE",
       "id": "219f845bda1a403e96d2705baad24173"
     }
   ]

@@ -11,19 +11,19 @@ const wranglerRequire = createRequire(require.resolve('wrangler/package.json'));
 const { Miniflare, convertV4MiniflareOptions } = await import(pathToFileURL(wranglerRequire.resolve('miniflare')).href);
 const root = fileURLToPath(new URL('../', import.meta.url));
 
-test('emits a single compact line while retaining attribution', async () => {
+test('emits formatted code while retaining attribution', async () => {
   const code = await readFile(root + 'dist/single/workers.js', 'utf8');
-  assert.equal(/[\r\n\u2028\u2029]/.test(code.trimEnd()), false);
+  assert.equal(/[\r\n\u2028\u2029]/.test(code.trimEnd()), true);
   assert.match(code, /GPL-2\.0/);
   assert.match(code, /cmliu\/edgetunnel/);
 });
 
-test('runs the generated workers.js with embedded frontend, KV and no ASSETS binding', async t => {
+test('runs the generated workers.js with embedded frontend, STORAGE and no ASSETS binding', async t => {
   assert.deepEqual(await readdir(root + 'dist/single'), ['workers.js']);
   const runtime = new Miniflare(convertV4MiniflareOptions({
     modules: true, scriptPath: root + 'dist/single/workers.js', compatibilityDate: '2026-10-10',
-    bindings: { ADMIN: 'artifact-test-password', ADMIN_PATH: 'artifact-entry', UUID: '90cd4a77-141a-43c9-991b-08263cfe9c10' },
-    kvNamespaces: ['KV'],
+    bindings: { GO_ON: 'artifact-test-password', BASE_PATH: 'artifact-entry', UUID: '90cd4a77-141a-43c9-991b-08263cfe9c10' },
+    kvNamespaces: ['STORAGE'],
   }));
   t.after(() => runtime.dispose());
   const request = (path, init = {}) => runtime.dispatchFetch('https://example.com' + path, { redirect: 'manual', ...init, headers: { 'User-Agent': 'artifact-test', ...init.headers } });

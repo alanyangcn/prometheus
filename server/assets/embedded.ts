@@ -1,10 +1,11 @@
 import { AssetCache } from './cache';
 
 export interface EmbeddedAsset { body: string; type: string; size: number; etag: string; iv?: string; compression?: 'gzip' }
+export type EmbeddedKey = string | { parts: [string, string] };
 export type EmbeddedManifest = Record<string, EmbeddedAsset>;
 
 /** A local replacement for the ASSETS fetch method, containing only public build output. */
-export function createEmbeddedAssets(manifest: EmbeddedManifest, encodedKey?: string): Pick<Fetcher, 'fetch'> {
+export function createEmbeddedAssets(manifest: EmbeddedManifest, encodedKey?: EmbeddedKey): Pick<Fetcher, 'fetch'> {
   let key: CryptoKey | undefined;
   const cache = new AssetCache();
   const decode = (value: string) => Uint8Array.from(atob(value), character => character.charCodeAt(0));
@@ -35,7 +36,18 @@ export function createEmbeddedAssets(manifest: EmbeddedManifest, encodedKey?: st
         if (encodedKey || asset.iv || asset.compression) {
           if (!encodedKey || !asset.iv || asset.compression !== 'gzip') throw new Error('Invalid encrypted resource');
           // Import lazily inside a request; Workers forbids async crypto during module startup.
-          key ??= await crypto.subtle.importKey('raw', decode(encodedKey), 'AES-GCM', false, ['decrypt']);
+          if (!key) {
+            let rawKey: Uint8Array<ArrayBuffer>;
+            if (typeof encodedKey === 'string') rawKey = decode(encodedKey);
+            else {
+              if (!Array.isArray(encodedKey.parts) || encodedKey.parts.length !== 2) throw new Error('Invalid key shares');
+              const [mask, masked] = encodedKey.parts.map(decode);
+              if (mask.length !== 32 || masked.length !== 32) throw new Error('Invalid key size');
+              rawKey = mask.map((byte, index) => byte ^ masked[index]);
+            }
+            try { key = await crypto.subtle.importKey('raw', rawKey, 'AES-GCM', false, ['decrypt']); }
+            finally { rawKey.fill(0); }
+          }
           const compressed = await crypto.subtle.decrypt({
             name: 'AES-GCM', iv: decode(asset.iv),
             additionalData: new TextEncoder().encode(JSON.stringify([path, asset.type, asset.size, asset.etag])),

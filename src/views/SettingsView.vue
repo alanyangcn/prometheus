@@ -112,10 +112,10 @@ async function save() {
       <div class="dialog-heading"><h2>{{ dialogKind === 'hosts' ? '节点域名' : dialogKind === 'uuid' ? 'UUID 说明' : dialogKind === 'alpn' ? '确认 ALPN 配置' : '关闭 Shadowsocks TLS' }}</h2><button type="button" class="secondary" aria-label="关闭弹窗" @click="close">×</button></div>
       <template v-if="dialogKind === 'hosts'"><label for="node-hosts">每行一个域名，也支持逗号分隔</label><textarea id="node-hosts" v-model="hostText" rows="6" /><div class="actions"><button type="button" @click="confirmHosts">确定</button><button type="button" class="secondary" @click="close">取消</button></div></template>
       <template v-else-if="dialogKind === 'uuid'">
-        <div class="uuid-flow" aria-label="ADMIN 和 KEY 生成 UUID，再生成订阅 TOKEN"><span>ADMIN + KEY</span><span aria-hidden="true">→</span><strong>UUID</strong><span aria-hidden="true">→</span><span class="uuid-flow-muted">订阅 TOKEN</span></div>
-        <section class="card uuid-help-card"><span class="uuid-method">方式 1：动态关联</span><h3>♻️ 修改项目变量</h3><p>修改变量 <b>ADMIN</b> 或 <b>KEY</b> 的值，系统将会根据算法动态生成新的 UUID。</p></section>
+        <div class="uuid-flow" aria-label="GO_ON 和 KEY 生成 UUID，再生成订阅 TOKEN"><span>GO_ON + KEY</span><span aria-hidden="true">→</span><strong>UUID</strong><span aria-hidden="true">→</span><span class="uuid-flow-muted">订阅 TOKEN</span></div>
+        <section class="card uuid-help-card"><span class="uuid-method">方式 1：动态关联</span><h3>♻️ 修改项目变量</h3><p>修改变量 <b>GO_ON</b> 或 <b>KEY</b> 的值，系统将会根据算法动态生成新的 UUID。</p></section>
         <section class="card uuid-help-card"><span class="uuid-method">方式 2：手动固定</span><h3>📌 直接赋值 UUID</h3><p>设定符合 <b>UUIDv4 标准</b>的变量 <b>UUID</b>，可将 UUID 强制锁定为您指定的值。</p></section>
-        <p class="uuid-help-tip"><strong>⚠️ 重要提示：</strong>一旦手动指定 <b>UUID</b> 变量，其值将不再随 ADMIN/KEY 的改动而发生变化。</p>
+        <p class="uuid-help-tip"><strong>⚠️ 重要提示：</strong>一旦手动指定 <b>UUID</b> 变量，其值将不再随 GO_ON/KEY 的改动而发生变化。</p>
         <div class="actions"><button type="button" class="secondary" @click="close">知道了</button></div>
       </template>
       <template v-else><p>{{ dialogKind === 'alpn' ? `将使用 ${pendingALPN}。手动指定 ALPN 可能与客户端或网络不兼容，导致连接失败。默认使用客户端自动协商。` : '关闭后将不使用传输层 TLS，同时关闭 ECH 和 TLS 分片。请确认客户端和网络支持此配置。' }}</p><div class="actions"><button type="button" @click="confirmDialog">确认修改</button><button type="button" class="secondary" @click="close">取消</button></div></template>

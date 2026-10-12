@@ -18,7 +18,7 @@ export function obfuscateClient(): Plugin {
         renameProperties: false,
         stringArray: true,
         stringArrayThreshold: 0.5,
-        stringArrayEncoding: [],
+        stringArrayEncoding: ['rc4'],
         // Vite analyzes literal dynamic imports after renderChunk to attach lazy CSS.
         reservedStrings: ['^\\./.*\\.(?:js|css)$'],
         controlFlowFlattening: false,

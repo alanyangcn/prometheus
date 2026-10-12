@@ -12,5 +12,8 @@ export async function protectAssets(source) {
     const ciphertext = await webcrypto.subtle.encrypt({ name: 'AES-GCM', iv, additionalData }, key, gzipSync(Buffer.from(asset.body, 'base64')));
     manifest[path] = { ...asset, body: Buffer.from(ciphertext).toString('base64'), iv: iv.toString('base64'), compression: 'gzip' };
   }
-  return { manifest, key: rawKey.toString('base64') };
+  // Two random-looking XOR shares change key representation, not cryptographic strength.
+  const mask = randomBytes(32);
+  const masked = Buffer.from(rawKey.map((byte, index) => byte ^ mask[index]));
+  return { manifest, key: { parts: [mask.toString('base64'), masked.toString('base64')] } };
 }

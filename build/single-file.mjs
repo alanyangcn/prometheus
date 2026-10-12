@@ -21,18 +21,18 @@ await build({
     load(id) {
       if (id === resolvedEntry) return `import { createSingleFileWorker } from ${JSON.stringify(worker)};\nexport default createSingleFileWorker(${JSON.stringify(manifest)}, ${JSON.stringify(key)});`;
     },
-    // Run after Vite's final rendering/minification so it cannot expand compact output.
+    // Format the obfuscated Worker after Vite's final minification.
     generateBundle(_options, bundle) {
       for (const chunk of Object.values(bundle)) {
         if (chunk.type !== 'chunk') continue;
         const result = JavaScriptObfuscator.obfuscate(chunk.code, {
-          target: 'browser-no-eval', compact: true, identifierNamesGenerator: 'hexadecimal',
+          target: 'browser-no-eval', compact: false, identifierNamesGenerator: 'hexadecimal',
           renameGlobals: false, renameProperties: false, stringArray: true, stringArrayThreshold: 0.6,
-          stringArrayEncoding: ['base64'], controlFlowFlattening: false, deadCodeInjection: false,
+          stringArrayEncoding: ['rc4'], controlFlowFlattening: false, deadCodeInjection: false,
           debugProtection: false, selfDefending: false, sourceMap: false,
           reservedStrings: ['^cloudflare:sockets$'],
         });
-        chunk.code = '/*! Prometheus — GPL-2.0. Includes algorithms derived from cmliu/edgetunnel; see LICENSE and THIRD_PARTY_NOTICES.md. */' + result.getObfuscatedCode();
+        chunk.code = '/*! Prometheus — GPL-2.0. Includes algorithms derived from cmliu/edgetunnel; see LICENSE and THIRD_PARTY_NOTICES.md. */\n' + result.getObfuscatedCode();
       }
     },
   }],

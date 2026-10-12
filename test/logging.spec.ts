@@ -2,7 +2,7 @@ import { it, expect } from 'vitest';
 import { createRuntime } from '../server/runtime';
 it('redacts subscription tokens before storing request logs', async () => {
   const data = new Map<string, string>();
-  const env = { KV: { get: async (key: string) => data.get(key) || null, put: async (key: string, value: string) => { data.set(key, value); } } };
+  const env = { STORAGE: { get: async (key: string) => data.get(key) || null, put: async (key: string, value: string) => { data.set(key, value); } } };
   const runtime = createRuntime();
   await runtime.recordLog(env, new Request('https://example.com/sub?token=private-value'), '127.0.0.1', 'Get_SUB', { TG: { 启用: false } });
   const logs = JSON.parse(data.get('log.json')!);
@@ -12,7 +12,7 @@ it('redacts subscription tokens before storing request logs', async () => {
 
 function logFixture(overrides: Record<string, string> = {}) {
   const data = new Map<string, string>();
-  const env = { ...overrides, KV: { get: async (key: string) => data.get(key) ?? null, put: async (key: string, value: string) => { data.set(key, value); } } };
+  const env = { ...overrides, STORAGE: { get: async (key: string) => data.get(key) ?? null, put: async (key: string, value: string) => { data.set(key, value); } } };
   const runtime = createRuntime();
   const request = new Request('https://example.com/api/config', { headers: { 'User-Agent': 'test-browser' } });
   return { data, env, runtime, request, logs: () => JSON.parse(data.get('log.json') || '[]') };

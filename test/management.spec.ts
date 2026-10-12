@@ -5,8 +5,8 @@ import worker from '../server/index';
 function fixture() {
   const data = new Map<string, string>();
   const env = {
-    ADMIN: 'test-only-password', ADMIN_PATH: 'test-entry', UUID: '90cd4a77-141a-43c9-991b-08263cfe9c10',
-    KV: { get: async (key: string) => data.get(key) ?? null, put: async (key: string, value: string) => { data.set(key, value); } },
+    GO_ON: 'test-only-password', BASE_PATH: 'test-entry', UUID: '90cd4a77-141a-43c9-991b-08263cfe9c10',
+    STORAGE: { get: async (key: string) => data.get(key) ?? null, put: async (key: string, value: string) => { data.set(key, value); } },
   };
   async function request(path: string, body?: unknown, cookie?: string, origin?: string) {
     const headers: Record<string, string> = { 'User-Agent': 'prometheus-test' };
@@ -24,7 +24,7 @@ function fixture() {
   return { env, data, request };
 }
 async function login(f: ReturnType<typeof fixture>) {
-  const response = await f.request('/api/login', { password: f.env.ADMIN });
+  const response = await f.request('/api/login', { password: f.env.GO_ON });
   expect(response.status).toBe(200);
   expect(response.headers.get('Set-Cookie')).toContain('HttpOnly');
   return response.headers.get('Set-Cookie')!.split(';')[0];
@@ -40,7 +40,7 @@ describe('Authenticated local management', () => {
     expect((await f.request('/api/login', { password: 'wrong' })).status).toBe(401);
     expect((await f.request('/api/config')).status).toBe(401);
   });
-  it('initializes old KV schema and saves protocol settings', async () => {
+  it('initializes old STORAGE schema and saves protocol settings', async () => {
     const f = fixture(); const cookie = await login(f);
     const config = await (await f.request('/api/config', undefined, cookie)).json() as Record<string, unknown>;
     expect(config.UUID).toBe(f.env.UUID);
@@ -103,7 +103,7 @@ it('serves development JavaScript without forcing localhost HTTPS', async () => 
 
 
 
-it('serves scripts at their original path before ADMIN has been configured', async () => {
+it('serves scripts at their original path before GO_ON has been configured', async () => {
   const paths: string[] = [];
   const env = { ASSETS: { fetch: async (request: Request) => {
     const path = new URL(request.url).pathname;
@@ -147,7 +147,7 @@ it('audits configuration visits, successful saves and resets without recording r
   await f.request('/api/config/reset', {}, cookie);
   const logs = JSON.parse(f.data.get('log.json')!);
   expect(logs.map((log: any) => log.TYPE)).toEqual(['Admin_Login', 'Save_Config', 'Save_Config', 'Save_Custom_IPs', 'Init_Config']);
-  expect(JSON.stringify(logs)).not.toContain(f.env.ADMIN);
+  expect(JSON.stringify(logs)).not.toContain(f.env.GO_ON);
   expect(JSON.stringify(logs)).not.toContain(cookie);
 });
 

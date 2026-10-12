@@ -86,9 +86,9 @@ runtime.readConfig = async function 读取config_JSON(env, hostname, userID, UA 
         },
     };
     try {
-        let configJSON = await env.KV.get('config.json');
+        let configJSON = await env.STORAGE.get('config.json');
         if (!configJSON || 重置配置 == true) {
-            await env.KV.put('config.json', JSON.stringify(默认配置JSON, null, 2));
+            await env.STORAGE.put('config.json', JSON.stringify(默认配置JSON, null, 2));
             runtime.config_JSON = 默认配置JSON;
         }
         else {

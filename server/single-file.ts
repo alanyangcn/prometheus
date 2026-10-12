@@ -1,8 +1,8 @@
 import worker from './index';
-import { createEmbeddedAssets, type EmbeddedManifest } from './assets/embedded';
+import { createEmbeddedAssets, type EmbeddedKey, type EmbeddedManifest } from './assets/embedded';
 import type { WorkerEnv } from './env';
 
-export function createSingleFileWorker(manifest: EmbeddedManifest, key?: string) {
+export function createSingleFileWorker(manifest: EmbeddedManifest, key?: EmbeddedKey) {
   const assets = createEmbeddedAssets(manifest, key);
   return {
     fetch(request: Request, env: WorkerEnv, ctx: ExecutionContext): Promise<Response> {

@@ -13,7 +13,7 @@ runtime.worker = {
         const url = new URL(请求URL文本);
         const UA = request.headers.get('User-Agent') || 'null';
         const upgradeHeader = (request.headers.get('Upgrade') || '').toLowerCase(), contentType = (request.headers.get('content-type') || '').toLowerCase();
-        const 管理员密码 = env.ADMIN || env.admin || env.PASSWORD || env.password || env.pswd || env.TOKEN || env.KEY || env.UUID || env.uuid;
+        const 管理员密码 = env.GO_ON || env.admin || env.PASSWORD || env.password || env.pswd || env.TOKEN || env.KEY || env.UUID || env.uuid;
         const 加密秘钥 = env.KEY || '勿动此默认密钥，有需求请自行通过添加变量KEY进行修改';
         const userIDMD5 = await runtime.hashIdentity(管理员密码 + 加密秘钥);
         const uuidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-4[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/;
@@ -79,7 +79,7 @@ runtime.worker = {
                 return Response.redirect(url.href.replace(`http://${url.hostname}`, `https://${url.hostname}`), 301);
             if (!管理员密码)
                 return runtime.serveApp(request, '/setup').then(r => { const headers = new Headers(r.headers); headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate'); headers.set('Pragma', 'no-cache'); headers.set('Expires', '0'); return new Response(r.body, { status: 404, statusText: r.statusText, headers }); });
-            if (env.KV && typeof env.KV.get === 'function') {
+            if (env.STORAGE && typeof env.STORAGE.get === 'function') {
                 const 区分大小写访问路径 = url.pathname.slice(1);
                 if (区分大小写访问路径 === 加密秘钥 && 加密秘钥 !== '勿动此默认密钥，有需求请自行通过添加变量KEY进行修改') {
                     const params = new URLSearchParams(url.search);
@@ -109,7 +109,7 @@ runtime.worker = {
                     if (!authCookie || authCookie !== await runtime.hashIdentity(UA + 加密秘钥 + 管理员密码))
                         return new Response('重定向中...', { status: 302, headers: { 'Location': '/login' } });
                     if (访问路径 === 'admin/log.json') {
-                        const 读取日志内容 = await env.KV.get('log.json') || '[]';
+                        const 读取日志内容 = await env.STORAGE.get('log.json') || '[]';
                         return new Response(读取日志内容, { status: 200, headers: { 'Content-Type': 'application/json;charset=utf-8' } });
                     }
                     else if (区分大小写访问路径 === 'admin/getADDAPI') {
@@ -233,7 +233,7 @@ runtime.worker = {
                                 const newConfig = await request.json();
                                 if (!newConfig.UUID || !newConfig.HOST)
                                     return new Response(JSON.stringify({ error: '配置不完整' }), { status: 400, headers: { 'Content-Type': 'application/json;charset=utf-8' } });
-                                await env.KV.put('config.json', JSON.stringify(newConfig, null, 2));
+                                await env.STORAGE.put('config.json', JSON.stringify(newConfig, null, 2));
                                 ctx.waitUntil(runtime.recordLog(env, request, 访问IP, 'Save_Config', runtime.config_JSON));
                                 return new Response(JSON.stringify({ success: true, message: '配置已保存' }), { status: 200, headers: { 'Content-Type': 'application/json;charset=utf-8' } });
                             }
@@ -245,7 +245,7 @@ runtime.worker = {
                         else if (区分大小写访问路径 === 'admin/ADD.txt') {
                             try {
                                 const customIPs = await request.text();
-                                await env.KV.put('ADD.txt', customIPs);
+                                await env.STORAGE.put('ADD.txt', customIPs);
                                 ctx.waitUntil(runtime.recordLog(env, request, 访问IP, 'Save_Custom_IPs', runtime.config_JSON));
                                 return new Response(JSON.stringify({ success: true, message: '自定义IP已保存' }), { status: 200, headers: { 'Content-Type': 'application/json;charset=utf-8' } });
                             }
@@ -261,7 +261,7 @@ runtime.worker = {
                         return new Response(JSON.stringify(runtime.config_JSON, null, 2), { status: 200, headers: { 'Content-Type': 'application/json' } });
                     }
                     else if (区分大小写访问路径 === 'admin/ADD.txt') {
-                        let 本地优选IP = await env.KV.get('ADD.txt') || 'null';
+                        let 本地优选IP = await env.STORAGE.get('ADD.txt') || 'null';
                         if (本地优选IP == 'null')
                             本地优选IP = (await runtime.generateAddresses(request, runtime.config_JSON.优选订阅生成.本地IP库.随机数量, runtime.config_JSON.优选订阅生成.本地IP库.指定端口))[1];
                         return new Response(本地优选IP, { status: 200, headers: { 'Content-Type': 'text/plain;charset=utf-8', 'asn': (request.cf || {}).asn } });
@@ -323,7 +323,7 @@ runtime.worker = {
                             const TLS分片参数 = runtime.config_JSON.TLS分片 == 'Shadowrocket' ? `&fragment=${encodeURIComponent('1,40-60,30-50,tlshello')}` : runtime.config_JSON.TLS分片 == 'Happ' ? `&fragment=${encodeURIComponent('3,1,tlshello')}` : '';
                             let 完整优选IP = [], 其他节点LINK = '', 反代IP池 = [];
                             if (!url.searchParams.has('sub') && runtime.config_JSON.优选订阅生成.local) {
-                                const 完整优选列表 = runtime.config_JSON.优选订阅生成.本地IP库.随机IP ? (await runtime.generateAddresses(request, runtime.config_JSON.优选订阅生成.本地IP库.随机数量, runtime.config_JSON.优选订阅生成.本地IP库.指定端口))[0] : await env.KV.get('ADD.txt') ? await runtime.splitList(await env.KV.get('ADD.txt')) : (await runtime.generateAddresses(request, runtime.config_JSON.优选订阅生成.本地IP库.随机数量, runtime.config_JSON.优选订阅生成.本地IP库.指定端口))[0];
+                                const 完整优选列表 = runtime.config_JSON.优选订阅生成.本地IP库.随机IP ? (await runtime.generateAddresses(request, runtime.config_JSON.优选订阅生成.本地IP库.随机数量, runtime.config_JSON.优选订阅生成.本地IP库.指定端口))[0] : await env.STORAGE.get('ADD.txt') ? await runtime.splitList(await env.STORAGE.get('ADD.txt')) : (await runtime.generateAddresses(request, runtime.config_JSON.优选订阅生成.本地IP库.随机数量, runtime.config_JSON.优选订阅生成.本地IP库.指定端口))[0];
                                 const 优选API = [], 优选IP = [], 其他节点 = [];
                                 for (const 元素 of 完整优选列表) {
                                     if (元素.toLowerCase().startsWith('sub://')) {
