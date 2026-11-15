@@ -126,7 +126,10 @@ runtime.worker = {
                                 }
                                 const 请求优选API内容 = await runtime.fetchAddressSources([待验证优选URL], url.searchParams.get('port') || '443', 本机标识头);
                                 let 优选API的IP = 请求优选API内容[0].length > 0 ? 请求优选API内容[0] : 请求优选API内容[1];
-                                优选API的IP = 优选API的IP.map(item => item.replace(/#(.+)$/, (_, remark) => '#' + decodeURIComponent(remark)));
+                                优选API的IP = 优选API的IP.map(item => item.replace(/#(.+)$/, (_, remark) => {
+                                    try { return '#' + decodeURIComponent(remark); }
+                                    catch { return '#' + remark; }
+                                }));
                                 return new Response(JSON.stringify({ success: true, data: 优选API的IP }, null, 2), { status: 200, headers: { 'Content-Type': 'application/json;charset=utf-8' } });
                             }
                             catch (err) {
@@ -145,8 +148,8 @@ runtime.worker = {
                         let 检测代理响应;
                         try {
                             const checkParsed = await runtime.parseProxyAddress(代理参数, runtime.proxyDefaultPort(代理协议));
-                            const { username, password, hostname, port } = checkParsed;
-                            const 完整代理参数 = username && password ? `${username}:${password}@${hostname}:${port}` : `${hostname}:${port}`;
+                            const { username, hostname, port } = checkParsed;
+                            const 完整代理参数 = username ? `${username}:***@${hostname}:${port}` : `${hostname}:${port}`;
                             try {
                                 const 检测主机 = 'cloudflare.com', 检测端口 = 443, encoder = new TextEncoder(), decoder = new TextDecoder();
                                 const TCP连接 = runtime.创建请求TCP连接器(request);
@@ -217,7 +220,8 @@ runtime.worker = {
                             }
                         }
                         catch (err) {
-                            检测代理响应 = { success: false, error: err.message, proxy: 代理协议 + "://" + 代理参数, responseTime: Date.now() - startTime };
+                            const 脱敏代理参数 = String(代理参数 || '').replace(/:[^@/]*@/, ':***@');
+                            检测代理响应 = { success: false, error: err.message, proxy: 代理协议 + "://" + 脱敏代理参数, responseTime: Date.now() - startTime };
                         }
                         return new Response(JSON.stringify(检测代理响应, null, 2), { status: 200, headers: { 'Content-Type': 'application/json;charset=utf-8' } });
                     }
@@ -302,7 +306,7 @@ runtime.worker = {
                         const ua = UA.toLowerCase();
                         const responseHeaders = {
                             "content-type": "text/plain; charset=utf-8",
-                            "Profile-Update-Interval": runtime.config_JSON.优选订阅生成.SUBUpdateTime,
+                            "Profile-Update-Interval": String(runtime.config_JSON.优选订阅生成.SUBUpdateTime),
                             "Profile-web-page-url": url.protocol + '//' + url.host + '/admin',
                             "Cache-Control": "no-store",
                         };
@@ -354,8 +358,11 @@ runtime.worker = {
                                         }
                                         else if (地址部分.toLowerCase().includes('://')) {
                                             if (元素.includes('#')) {
-                                                const 地址备注分离 = 元素.split('#');
-                                                其他节点.push(地址备注分离[0] + '#' + encodeURIComponent(decodeURIComponent(地址备注分离[1])));
+                                                const 井号位置 = 元素.indexOf('#');
+                                                const 原始备注 = 元素.slice(井号位置 + 1);
+                                                let 解码备注 = 原始备注;
+                                                try { 解码备注 = decodeURIComponent(原始备注); } catch { }
+                                                其他节点.push(元素.slice(0, 井号位置) + '#' + encodeURIComponent(解码备注));
                                             }
                                             else
                                                 其他节点.push(元素);
@@ -452,7 +459,14 @@ runtime.worker = {
                             }
                         }
                         if (!ua.includes('subconverter') && 用户客户端请求订阅) {
-                            const 打乱后HOSTS = [...runtime.config_JSON.HOSTS].sort(() => Math.random() - 0.5);
+                            const 候选HOSTS = Array.isArray(runtime.config_JSON.HOSTS) && runtime.config_JSON.HOSTS.length > 0
+                                ? [...runtime.config_JSON.HOSTS]
+                                : [runtime.config_JSON.HOST || host];
+                            for (let i = 候选HOSTS.length - 1; i > 0; i--) {
+                                const j = Math.floor(Math.random() * (i + 1));
+                                [候选HOSTS[i], 候选HOSTS[j]] = [候选HOSTS[j], 候选HOSTS[i]];
+                            }
+                            const 打乱后HOSTS = 候选HOSTS;
                             let 替换域名计数 = 0, 当前随机HOST = null;
                             订阅内容 = 订阅内容
                                 .replace(/00000000-0000-4000-8000-000000000000/g, runtime.config_JSON.UUID)
@@ -466,8 +480,13 @@ runtime.worker = {
                                 return 当前随机HOST;
                             });
                         }
-                        if (订阅类型 === 'mixed' && (!ua.includes('mozilla') || url.searchParams.has('b64') || url.searchParams.has('base64')))
-                            订阅内容 = btoa(订阅内容);
+                        if (订阅类型 === 'mixed' && (!ua.includes('mozilla') || url.searchParams.has('b64') || url.searchParams.has('base64'))) {
+                            const utf8Bytes = new TextEncoder().encode(订阅内容);
+                            let binary = '';
+                            for (let i = 0; i < utf8Bytes.length; i += 0x8000)
+                                binary += String.fromCharCode(...utf8Bytes.subarray(i, i + 0x8000));
+                            订阅内容 = btoa(binary);
+                        }
                         if (订阅类型 === 'singbox') {
                             订阅内容 = await runtime.patchSingbox(订阅内容, runtime.config_JSON);
                             responseHeaders["content-type"] = 'application/json; charset=utf-8';
@@ -480,9 +499,10 @@ runtime.worker = {
                     }
                 }
                 else if (访问路径 === 'locations') {
-                    const cookies = request.headers.get('Cookie') || '';
-                    const authCookie = cookies.split(';').find(c => c.trim().startsWith('auth='))?.split('=')[1];
-                    if (authCookie && authCookie == await runtime.hashIdentity(UA + 加密秘钥 + 管理员密码))
+                    const cookies = (request.headers.get('Cookie') || '').split(';').map(c => c.trim()).filter(c => c.startsWith('auth=')).map(c => c.slice(5)).filter(Boolean);
+                    const expectedAuth = await runtime.hashIdentity(UA + 加密秘钥 + 管理员密码);
+                    const constantEqual = (a, b) => { let diff = a.length ^ b.length; for (let i = 0; i < b.length; i++) diff |= (a.charCodeAt(i) || 0) ^ b.charCodeAt(i); return diff === 0; };
+                    if (cookies.some(c => constantEqual(c, expectedAuth)))
                         return fetch(new Request('https://speed.cloudflare.com/locations', { headers: { 'Referer': 'https://speed.cloudflare.com/' } }));
                 }
                 else if (访问路径 === 'robots.txt')

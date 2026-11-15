@@ -22,7 +22,7 @@ async function save() {
   busy.value = true; error.value = ''; message.value = '';
   try {
     if (subscriptionMode(draft.value) === 'custom' && !addresses.value.trim()) throw new Error('自定义地址库不能为空，请先添加地址');
-    if (subscriptionMode(draft.value) === 'random' && (!Number.isInteger(group(group(draft.value, '优选订阅生成'), '本地IP库').随机数量) || Number(group(group(draft.value, '优选订阅生成'), '本地IP库').随机数量) > 99)) throw new Error('随机优选数量必须为 1–99 的整数');
+    if (subscriptionMode(draft.value) === 'random' && (!Number.isInteger(group(group(draft.value, '优选订阅生成'), '本地IP库').随机数量) || Number(group(group(draft.value, '优选订阅生成'), '本地IP库').随机数量) < 1 || Number(group(group(draft.value, '优选订阅生成'), '本地IP库').随机数量) > 99)) throw new Error('随机优选数量必须为 1–99 的整数');
     // Update only this section, preserving node and proxy settings saved elsewhere.
     const subscription = snapshot(group(draft.value, '优选订阅生成'));
     delete subscription.SUBNAME;

@@ -5,9 +5,10 @@ runtime.forwardataudp = async function forwardataudp(udpChunk, webSocket, respHe
     const 请求数据 = runtime.数据转Uint8Array(udpChunk);
     const 请求字节数 = 请求数据.byteLength;
     runtime.log(`[UDP转发] 收到 DNS 请求: ${请求字节数}B -> 8.8.4.4:53`);
+    let tcpSocket = null;
     try {
         const TCP连接 = runtime.创建请求TCP连接器(request);
-        const tcpSocket = TCP连接({ hostname: '8.8.4.4', port: 53 });
+        tcpSocket = TCP连接({ hostname: '8.8.4.4', port: 53 });
         let 魏烈思Header = respHeader;
         const writer = tcpSocket.writable.getWriter();
         await writer.write(请求数据);
@@ -43,6 +44,12 @@ runtime.forwardataudp = async function forwardataudp(udpChunk, webSocket, respHe
     }
     catch (error) {
         runtime.log(`[UDP转发] DNS 转发失败: ${error?.message || error}`);
+    }
+    finally {
+        try {
+            tcpSocket?.close?.();
+        }
+        catch (e) { }
     }
 };
   },
@@ -97,19 +104,31 @@ runtime.queryDns = async function DoH查询(域名, 记录类型, DoH解析服�
         qview.setUint16(12 + qname.length, qtype);
         qview.setUint16(12 + qname.length + 2, 1);
         runtime.log(`[DoH查询] 发送查询报文 ${域名} via ${DoH解析服务} (type=${qtype}, ${query.length}字节)`);
-        const response = await fetch(DoH解析服务, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/dns-message',
-                'Accept': 'application/dns-message',
-            },
-            body: query,
-        });
-        if (!response.ok) {
-            console.warn(`[DoH查询] 请求失败 ${域名} ${记录类型} via ${DoH解析服务} 响应代码:${response.status}`);
-            return [];
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000);
+        let response, rawBuf;
+        try {
+            response = await fetch(DoH解析服务, {
+                method: 'POST',
+                signal: controller.signal,
+                headers: {
+                    'Content-Type': 'application/dns-message',
+                    'Accept': 'application/dns-message',
+                },
+                body: query,
+            });
+            if (!response.ok) {
+                console.warn(`[DoH查询] 请求失败 ${域名} ${记录类型} via ${DoH解析服务} 响应代码:${response.status}`);
+                return [];
+            }
+            rawBuf = await response.arrayBuffer();
         }
-        const buf = new Uint8Array(await response.arrayBuffer());
+        finally {
+            clearTimeout(timeoutId);
+        }
+        const buf = new Uint8Array(rawBuf);
+        if (buf.length < 12)
+            return [];
         const dv = new DataView(buf.buffer);
         const qdcount = dv.getUint16(4);
         const ancount = dv.getUint16(6);
@@ -125,6 +144,8 @@ runtime.queryDns = async function DoH查询(域名, 记录类型, DoH解析服�
                     break;
                 }
                 if ((len & 0xC0) === 0xC0) {
+                    if (p + 1 >= buf.length)
+                        break;
                     if (!jumped)
                         endPos = p + 2;
                     p = ((len & 0x3F) << 8) | buf[p + 1];
@@ -139,7 +160,7 @@ runtime.queryDns = async function DoH查询(域名, 记录类型, DoH解析服�
             return [labels.join('.'), endPos];
         };
         let offset = 12;
-        for (let i = 0; i < qdcount; i++) {
+        for (let i = 0; i < qdcount && offset < buf.length; i++) {
             const [, end] = 解析域名(offset);
             offset = (end) + 4;
         }
@@ -147,6 +168,8 @@ runtime.queryDns = async function DoH查询(域名, 记录类型, DoH解析服�
         for (let i = 0; i < ancount && offset < buf.length; i++) {
             const [name, nameEnd] = 解析域名(offset);
             offset = (nameEnd);
+            if (offset + 10 > buf.length)
+                break;
             const type = dv.getUint16(offset);
             offset += 2;
             offset += 2;
@@ -154,6 +177,8 @@ runtime.queryDns = async function DoH查询(域名, 记录类型, DoH解析服�
             offset += 4;
             const rdlen = dv.getUint16(offset);
             offset += 2;
+            if (offset + rdlen > buf.length)
+                break;
             const rdata = buf.slice(offset, offset + rdlen);
             offset += rdlen;
             let data;

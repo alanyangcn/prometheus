@@ -203,3 +203,26 @@ it('accepts valid auth cookie alongside stale duplicate cookies and recovers fro
   expect(logsRes.status).toBe(200);
   expect(await logsRes.json()).toEqual([]);
 });
+
+it('encodes UTF-8 external subscription links safely, falls back when HOSTS is empty, and validates HOSTS/SUBUpdateTime', async () => {
+  const f = fixture();
+  const cookie = await login(f);
+  const config = await (await f.request('/api/config', undefined, cookie)).json() as any;
+  expect((await f.request('/api/config', { HOSTS: [] }, cookie)).status).toBe(400);
+  expect((await f.request('/api/config', { HOSTS: ['bad host.example'] }, cookie)).status).toBe(400);
+  expect((await f.request('/api/config', { 优选订阅生成: { SUBUpdateTime: 0 } }, cookie)).status).toBe(400);
+
+  // Simulate legacy KV record with empty HOSTS and raw UTF-8 + unescaped % in ADD.txt
+  f.data.set('config.json', JSON.stringify({ ...config, HOSTS: [], 优选订阅生成: { ...config.优选订阅生成, 本地IP库: { ...config.优选订阅生成.本地IP库, 随机IP: false } } }));
+  f.data.set('ADD.txt', [
+    'vmess://eyJhZGQiOiIyMDMuMC4xMTMuMSIsInBzIjoi6aaZ5riv节点\"}#香港 50%',
+    'example.net:443#优选节点',
+  ].join('\n'));
+  const subRes = await f.request(`/sub?token=${config.优选订阅生成.TOKEN}&b64`);
+  expect(subRes.status).toBe(200);
+  const rawB64 = await subRes.text();
+  const decoded = new TextDecoder().decode(Uint8Array.from(atob(rawB64), c => c.charCodeAt(0)));
+  expect(decoded).toContain('节点');
+  expect(decoded).toContain('host=example.com');
+  expect(decoded).not.toContain('undefined');
+});

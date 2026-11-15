@@ -15,7 +15,7 @@ const optimizing = ref(false);
 async function openOptimizer() { optimizing.value = true; await nextTick(); optimizerDialog.value?.showModal(); }
 function closeOptimizer() { optimizerDialog.value?.close(); optimizing.value = false; }
 onBeforeUnmount(closeOptimizer);
-function exportAddresses() { const url = URL.createObjectURL(new Blob([addresses.value],{type:'text/plain;charset=utf-8'})); const link = document.createElement('a'); link.href = url; link.download = 'prometheus-addresses.txt'; link.click(); URL.revokeObjectURL(url); }
+function exportAddresses() { const url = URL.createObjectURL(new Blob([addresses.value],{type:'text/plain;charset=utf-8'})); const link = document.createElement('a'); link.href = url; link.download = 'prometheus-addresses.txt'; link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); }
 
 const fileError = useToastMessage('error');
 async function upload(event: Event) {

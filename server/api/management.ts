@@ -42,6 +42,8 @@ function validateConfig(update: Configuration, baseline: Configuration): void {
   const pool = object(preferred.本地IP库) ? preferred.本地IP库 : {};
   if (pool.随机数量 !== undefined && (!Number.isInteger(pool.随机数量) || Number(pool.随机数量) < 1 || Number(pool.随机数量) > 1024)) throw new Error('随机数量必须为 1–1024');
   if (pool.指定端口 !== undefined && (pool.指定端口 !== -1 && (!Number.isInteger(pool.指定端口) || Number(pool.指定端口) < 1 || Number(pool.指定端口) > 65535))) throw new Error('端口必须为 -1 或 1–65535');
+  if (preferred.SUBUpdateTime !== undefined && (!Number.isInteger(preferred.SUBUpdateTime) || Number(preferred.SUBUpdateTime) < 1 || Number(preferred.SUBUpdateTime) > 720)) throw new Error('订阅更新间隔必须为 1–720 小时');
+  if (Array.isArray(update.HOSTS) && (update.HOSTS.length === 0 || update.HOSTS.some(h => typeof h !== 'string' || !h.trim() || /[\s/?#\\]/.test(h)))) throw new Error('HOSTS 至少包含一个有效域名');
   if (update.协议类型 !== undefined && !['vless', 'trojan', 'ss'].includes(String(update.协议类型))) throw new Error('不支持的协议');
   if (update.传输协议 !== undefined && !['ws', 'grpc', 'xhttp'].includes(String(update.传输协议))) throw new Error('不支持的传输协议');
   if (update.SS && object(update.SS) && update.SS.加密方式 !== undefined && !['aes-128-gcm', 'aes-256-gcm'].includes(String(update.SS.加密方式))) throw new Error('不支持的 Shadowsocks 加密算法');

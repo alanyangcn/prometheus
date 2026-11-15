@@ -66,10 +66,17 @@ runtime.forwardataTCP = async function forwardataTCP(host, portNum, rawData, ws,
         return true;
     };
     async function 等待连接建立(remoteSock, timeoutMs = 连接超时毫秒) {
-        await Promise.race([
-            remoteSock.opened,
-            new Promise((_, reject) => setTimeout(() => reject(new Error('连接超时')), timeoutMs))
-        ]);
+        let timer = null;
+        try {
+            await Promise.race([
+                remoteSock.opened,
+                new Promise((_, reject) => { timer = setTimeout(() => reject(new Error('连接超时')), timeoutMs); })
+            ]);
+        }
+        finally {
+            if (timer !== null)
+                clearTimeout(timer);
+        }
     }
     async function 打开TCP连接(address, port) {
         const remoteSock = TCP连接({ hostname: address, port });
@@ -324,7 +331,7 @@ runtime.forwardataTCP = async function forwardataTCP(host, portNum, rawData, ws,
         }
     }
     remoteConnWrapper.retryConnect = async () => connecttoPry(!已通过代理发送首包);
-    if (ctx代理类型 && (ctx代理全局 || runtime.SOCKS5白名单.some(p => new RegExp(`^${p.replace(/\*/g, '.*')}$`, 'i').test(host)))) {
+    if (ctx代理类型 && (ctx代理全局 || runtime.SOCKS5白名单.some(p => new RegExp(`^${String(p).replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*')}$`, 'i').test(host)))) {
         runtime.log(`[TCP转发] 启用 SOCKS5/HTTP/HTTPS/TURN/SSTP 全局代理`);
         try {
             await connecttoPry();

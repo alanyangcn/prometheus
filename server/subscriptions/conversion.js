@@ -263,7 +263,9 @@ runtime.patchSingbox = async function Singbox订阅配置文件热补丁(SingBox
     const fingerprint = config_JSON?.Fingerprint || "chrome";
     const ECH启用 = Boolean(config_JSON?.ECH);
     const ECH_SNI = config_JSON?.ECHConfig?.SNI || "cloudflare-ech.com";
-    const sb_json_text = SingBox_原始订阅内容.replace('1.1.1.1', '8.8.8.8').replace('1.0.0.1', '8.8.4.4');
+    const sb_json_text = String(SingBox_原始订阅内容 || '')
+        .replace(/(?<![\d.])1\.1\.1\.1(?![\d.])/g, '8.8.8.8')
+        .replace(/(?<![\d.])1\.0\.0\.1(?![\d.])/g, '8.8.4.4');
     try {
         const config = JSON.parse(sb_json_text);
         const 数组化 = value => value === undefined || value === null ? [] : (Array.isArray(value) ? value : [value]);
@@ -546,7 +548,12 @@ runtime.patchSingbox = async function Singbox订阅配置文件热补丁(SingBox
     }
     catch (e) {
         console.error("Singbox热补丁执行失败:", e);
-        return JSON.stringify(JSON.parse(sb_json_text), null, 2);
+        try {
+            return JSON.stringify(JSON.parse(sb_json_text), null, 2);
+        }
+        catch {
+            return String(SingBox_原始订阅内容 || '');
+        }
     }
 };
   },
@@ -557,14 +564,16 @@ runtime.patchSurge = function Surge订阅配置文件热补丁(content, url, con
     let 输出内容 = "";
     for (let x of 每行内容) {
         if (x.includes('= tro' + 'jan,') && !x.includes('ws=true') && !x.includes('ws-path=')) {
-            const host = x.split("sni=")[1].split(",")[0];
-            const 备改内容 = `sni=${host}, skip-cert-verify=${config_JSON.跳过证书验证}`;
-            const 正确内容 = `sni=${host}, skip-cert-verify=${config_JSON.跳过证书验证}, ws=true, ws-path=${完整节点路径.replace(/,/g, '%2C')}, ws-headers=Host:"${host}"`;
-            输出内容 += x.replace(new RegExp(备改内容, 'g'), 正确内容).replace("[", "").replace("]", "") + '\n';
+            const sniPart = x.split("sni=")[1];
+            if (sniPart) {
+                const host = sniPart.split(",")[0];
+                const 备改内容 = `sni=${host}, skip-cert-verify=${config_JSON.跳过证书验证}`;
+                const 正确内容 = `sni=${host}, skip-cert-verify=${config_JSON.跳过证书验证}, ws=true, ws-path=${完整节点路径.replace(/,/g, '%2C')}, ws-headers=Host:"${host}"`;
+                输出内容 += x.replaceAll(备改内容, 正确内容).replace("[", "").replace("]", "") + '\n';
+                continue;
+            }
         }
-        else {
-            输出内容 += x + '\n';
-        }
+        输出内容 += x + '\n';
     }
     输出内容 = `#!MANAGED-CONFIG ${url} interval=${config_JSON.优选订阅生成.SUBUpdateTime * 60 * 60} strict=false` + 输出内容.substring(输出内容.indexOf('\n'));
     return 输出内容;
@@ -572,6 +581,7 @@ runtime.patchSurge = function Surge订阅配置文件热补丁(content, url, con
   },
   (runtime) => {
 runtime.fetchSubscriptionSource = async function 获取优选订阅生成器数据(优选订阅生成器HOST, uid = "000000") {
+    const safeDecode = (val) => { try { return decodeURIComponent(val); } catch { return val; } };
     let 优选IP = [], 其他节点LINK = '', 格式化HOST = 优选订阅生成器HOST.replace(/^sub:\/\//i, 'https://').split('#')[0].split('?')[0];
     if (!/^https?:\/\//i.test(格式化HOST))
         格式化HOST = `https://${格式化HOST}`;
@@ -605,7 +615,7 @@ runtime.fetchSubscriptionSource = async function 获取优选订阅生成器数�
                     let 地址端口 = 地址匹配[1], 备注 = '';
                     const 备注匹配 = 行内容.match(/#(.+)$/);
                     if (备注匹配)
-                        备注 = '#' + decodeURIComponent(备注匹配[1]);
+                        备注 = '#' + safeDecode(备注匹配[1]);
                     优选IP.push(地址端口 + 备注);
                 }
             }
@@ -624,12 +634,13 @@ runtime.fetchSubscriptionSource = async function 获取优选订阅生成器数�
 runtime.fetchAddressSources = async function 请求优选API(urls, 默认端口 = '443', uid = "000000", 超时时间 = 3000) {
     if (!urls?.length)
         return [[], [], [], []];
+    const safeDecode = (val) => { try { return decodeURIComponent(val); } catch { return val; } };
     const results = new Set(), 反代IP池 = new Set();
     let 订阅链接响应的明文LINK内容 = '', 需要订阅转换订阅URLs = [];
     await Promise.allSettled(urls.map(async (url) => {
         const hashIndex = url.indexOf('#');
         const urlWithoutHash = hashIndex > -1 ? url.substring(0, hashIndex) : url;
-        const API备注名 = hashIndex > -1 ? decodeURIComponent(url.substring(hashIndex + 1)) : null;
+        const API备注名 = hashIndex > -1 ? safeDecode(url.substring(hashIndex + 1)) : null;
         const 优选IP作为反代IP = url.toLowerCase().includes('proxyip=true');
         if (urlWithoutHash.toLowerCase().startsWith('sub://')) {
             try {
@@ -670,11 +681,18 @@ runtime.fetchAddressSources = async function 请求优选API(urls, 默认端口 
         try {
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), 超时时间);
-            const response = await fetch(urlWithoutHash, { signal: controller.signal, headers: { 'User-Agent': runtime.汇聚订阅_UA + ' Uid/0x' + uid + ' Version/' + runtime.EDT_版本号 } });
-            clearTimeout(timeoutId);
+            let response, buffer;
+            try {
+                response = await fetch(urlWithoutHash, { signal: controller.signal, headers: { 'User-Agent': runtime.汇聚订阅_UA + ' Uid/0x' + uid + ' Version/' + runtime.EDT_版本号 } });
+                if (!response.ok)
+                    return;
+                buffer = await response.arrayBuffer();
+            }
+            finally {
+                clearTimeout(timeoutId);
+            }
             let text = '';
             try {
-                const buffer = await response.arrayBuffer();
                 const contentType = (response.headers.get('content-type') || '').toLowerCase();
                 const charset = contentType.match(/charset=([^\s;]+)/i)?.[1]?.toLowerCase() || '';
                 let decoders = ['utf-8', 'gb2312'];
@@ -699,7 +717,7 @@ runtime.fetchAddressSources = async function 请求优选API(urls, 默认端口 
                     }
                 }
                 if (!decodeSuccess) {
-                    text = await response.text();
+                    text = new TextDecoder('utf-8').decode(buffer);
                 }
                 if (!text || text.trim().length === 0) {
                     return;
@@ -713,7 +731,7 @@ runtime.fetchAddressSources = async function 请求优选API(urls, 默认端口 
             const cleanText = typeof text === 'string' ? text.replace(/\s/g, '') : '';
             if (cleanText.length > 0 && cleanText.length % 4 === 0 && /^[A-Za-z0-9+/]+={0,2}$/.test(cleanText)) {
                 try {
-                    const bytes = new Uint8Array(atob(cleanText).split('').map(c => c.charCodeAt(0)));
+                    const bytes = Uint8Array.from(atob(cleanText), c => c.charCodeAt(0));
                     预处理订阅明文内容 = new TextDecoder('utf-8').decode(bytes);
                 }
                 catch { }

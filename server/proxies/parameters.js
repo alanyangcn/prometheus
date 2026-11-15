@@ -179,24 +179,33 @@ runtime.parseProxyAddress = function 获取SOCKS5账号(address, 默认端口 = 
     const atIndex = address.lastIndexOf("@");
     const hostPart = (atIndex === -1 ? address : address.slice(atIndex + 1)).split('/')[0];
     const authPart = atIndex === -1 ? "" : address.slice(0, atIndex);
-    const [username, password] = authPart ? authPart.split(":") : [];
+    const colonAt = authPart.indexOf(":");
+    if (authPart && colonAt <= 0)
+        throw new Error('无效的 SOCKS 地址格式：认证部分必须是 "username:password" 的形式');
+    const username = authPart ? authPart.slice(0, colonAt) : undefined;
+    const password = authPart ? authPart.slice(colonAt + 1) : undefined;
     if (authPart && !password)
         throw new Error('无效的 SOCKS 地址格式：认证部分必须是 "username:password" 的形式');
-    let hostname = hostPart, port = 默认端口;
+    let hostname = hostPart, port = 默认端口, rawPort = null;
     if (hostPart.includes("]:")) {
         const [ipv6Host, ipv6Port = ""] = hostPart.split("]:");
         hostname = ipv6Host + "]";
-        port = Number(ipv6Port.replace(/[^\d]/g, ""));
+        rawPort = ipv6Port;
     }
     else if (!hostPart.startsWith("[")) {
         const parts = hostPart.split(":");
         if (parts.length === 2) {
             hostname = parts[0];
-            port = Number(parts[1].replace(/[^\d]/g, ""));
+            rawPort = parts[1];
         }
     }
-    if (isNaN(port))
-        throw new Error('无效的 SOCKS 地址格式：端口号必须是数字');
+    if (rawPort !== null) {
+        if (!/^\d+$/.test(rawPort))
+            throw new Error('无效的 SOCKS 地址格式：端口号必须是数字');
+        port = Number(rawPort);
+    }
+    if (!Number.isInteger(port) || port < 1 || port > 65535)
+        throw new Error('无效的 SOCKS 地址格式：端口号必须在 1–65535 之间');
     if (hostname.includes(":") && !runtime.IPv6方括号正则.test(hostname))
         throw new Error('无效的 SOCKS 地址格式：IPv6 地址必须用方括号括起来，如 [2001:db8::1]');
     return { username, password, hostname, port };
