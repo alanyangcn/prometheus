@@ -92,13 +92,28 @@ runtime.readConfig = async function 读取config_JSON(env, hostname, userID, UA 
             runtime.config_JSON = 默认配置JSON;
         }
         else {
-            runtime.config_JSON = JSON.parse(configJSON);
+            const parsed = JSON.parse(configJSON);
+            if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed))
+                throw new Error('config.json 格式无效');
+            runtime.config_JSON = parsed;
         }
     }
     catch (error) {
         console.error(`读取config_JSON出错: ${error.message}`);
         runtime.config_JSON = 默认配置JSON;
     }
+    if (!runtime.config_JSON.订阅转换配置 || typeof runtime.config_JSON.订阅转换配置 !== 'object' || Array.isArray(runtime.config_JSON.订阅转换配置))
+        runtime.config_JSON.订阅转换配置 = { ...默认配置JSON.订阅转换配置 };
+    if (!runtime.config_JSON.优选订阅生成 || typeof runtime.config_JSON.优选订阅生成 !== 'object' || Array.isArray(runtime.config_JSON.优选订阅生成))
+        runtime.config_JSON.优选订阅生成 = { ...默认配置JSON.优选订阅生成, 本地IP库: { ...默认配置JSON.优选订阅生成.本地IP库 } };
+    if (!runtime.config_JSON.优选订阅生成.本地IP库 || typeof runtime.config_JSON.优选订阅生成.本地IP库 !== 'object' || Array.isArray(runtime.config_JSON.优选订阅生成.本地IP库))
+        runtime.config_JSON.优选订阅生成.本地IP库 = { ...默认配置JSON.优选订阅生成.本地IP库 };
+    if (!runtime.config_JSON.反代 || typeof runtime.config_JSON.反代 !== 'object' || Array.isArray(runtime.config_JSON.反代))
+        runtime.config_JSON.反代 = JSON.parse(JSON.stringify(默认配置JSON.反代));
+    if (!runtime.config_JSON.反代.SOCKS5 || typeof runtime.config_JSON.反代.SOCKS5 !== 'object' || Array.isArray(runtime.config_JSON.反代.SOCKS5))
+        runtime.config_JSON.反代.SOCKS5 = { ...默认配置JSON.反代.SOCKS5 };
+    if (runtime.config_JSON.反代[_p] === undefined)
+        runtime.config_JSON.反代[_p] = 'auto';
     if (!runtime.config_JSON.订阅转换配置.SUBLIST)
         runtime.config_JSON.订阅转换配置.SUBLIST = false;
     if (!runtime.config_JSON.订阅转换配置.UDP)
@@ -180,7 +195,7 @@ runtime.readConfig = async function 读取config_JSON(env, hostname, userID, UA 
         路径反代参数 = 反代路径部分;
         反代查询参数 = 反代查询部分;
     }
-    runtime.config_JSON.PATH = runtime.config_JSON.PATH.replace(路径反代参数, '').replace('//', '/');
+    runtime.config_JSON.PATH = runtime.config_JSON.PATH.replace(路径反代参数, '').replace(/\/{2,}/g, '/');
     const normalizedPath = runtime.config_JSON.PATH === '/' ? '' : runtime.config_JSON.PATH.replace(/\/+(?=\?|$)/, '').replace(/\/+$/, '');
     const [路径部分, ...查询数组] = normalizedPath.split('?');
     const 查询部分 = 查询数组.length ? '?' + 查询数组.join('?') : '';

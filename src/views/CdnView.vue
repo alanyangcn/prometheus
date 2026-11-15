@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useToastMessage } from '../composables/useToast';
 import { vGlassDialog } from '../features/appearance/glassDialog';
-import { computed, onMounted, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import type { Configuration } from '../../shared/config';
 import { useConfigStore } from '../stores/config';
 import { snapshot } from '../stores/snapshot';
@@ -43,14 +43,21 @@ async function chooseEntry(entry: DirectoryEntry) {
 }
 async function loadTemplates() { modalBusy.value = true; modalError.value = ''; try {presets.value = await api('/api/tools/path-presets',{});} catch (cause) {modalError.value = cause instanceof Error ? cause.message : '预设读取失败';} finally {modalBusy.value = false;} }
 function applyTemplate(event: Event) { const value = (event.target as HTMLSelectElement).value; if (value === '') return; const preset = presets.value[Number(value)]; if (preset) Object.assign(group(reverse.value,'路径模板'), snapshot(preset.templates)); }
-onMounted(async () => { try { draft.value = snapshot(await store.load()); } catch (cause) { error.value = cause instanceof Error ? cause.message : '加载失败'; } });
-function cancel() { if (store.data) draft.value = snapshot(store.data); error.value = ''; message.value = ''; verification.value = ''; }
+function syncSavedVerification(value: Configuration) {
+  const savedProxy = group(group(value, '反代'), 'SOCKS5');
+  verification.value = savedProxy.启用 && String(savedProxy.账号 || '').trim() ? `${savedProxy.启用}:${savedProxy.账号}` : '';
+}
+onMounted(async () => { try { const loaded = snapshot(await store.load()); draft.value = loaded; syncSavedVerification(loaded); } catch (cause) { error.value = cause instanceof Error ? cause.message : '加载失败'; } });
+onBeforeUnmount(() => dialog.value?.close());
+function cancel() { if (store.data) { const restored = snapshot(store.data); draft.value = restored; syncSavedVerification(restored); } else verification.value = ''; error.value = ''; message.value = ''; }
 async function save() {
   if (!draft.value || busy.value) return; error.value = ''; message.value = '';
-  const proxy = group(group(draft.value, '反代'), 'SOCKS5');
+  const rev = group(draft.value, '反代');
+  const proxy = group(rev, 'SOCKS5');
+  if (!proxy.启用 && !String(rev.PROXYIP || '').trim()) { error.value = '请填写 PROXYIP 地址或启用自动获取'; return; }
   if (proxy.启用 && verification.value !== verificationKey.value) { error.value = '请先验证当前代理账号'; return; }
   busy.value = true;
-  try { await store.save(prepareSettings({反代: snapshot(group(draft.value, '反代'))}, navigator.userAgent)); draft.value = snapshot(store.data!); message.value = 'Cloudflare CDN 访问设置已保存'; }
+  try { await store.save(prepareSettings({反代: snapshot(rev)}, navigator.userAgent)); const updated = snapshot(store.data!); draft.value = updated; syncSavedVerification(updated); message.value = 'Cloudflare CDN 访问设置已保存'; }
   catch (cause) { error.value = cause instanceof Error ? cause.message : '保存失败'; } finally { busy.value = false; }
 }
 </script>

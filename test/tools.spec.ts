@@ -37,4 +37,20 @@ describe('Converter save snapshot and source compatibility', () => {
   it('canonicalizes only validated converter workflow backend suffixes', () => { expect(converterBaseURL('https://converter.example/sub')).toBe('https://converter.example'); expect(converterBaseURL('http://converter.example/base/version/')).toBe('http://converter.example/base'); expect(converterBaseURL('https://converter.example/base/?query=1')).toBe('https://converter.example/base'); });
   it('uses immutable verified values and rejects edit during config read', async () => { const key = converterKey('https://converter.example/sub','https://config.example?key=1'); let current = key; const write = vi.fn(); await expect(saveVerifiedConverter({key,baseURL:'https://converter.example',config:'https://config.example?key=1'},() => current,async () => { current = converterKey('https://other.example',''); return {}; },write)).rejects.toThrow('重新验证'); expect(write).not.toHaveBeenCalled(); current = key; await saveVerifiedConverter({key,baseURL:'https://converter.example/sub',config:'https://config.example?key=1'},() => current,async () => ({订阅转换配置:{UDP:true}}),write); expect(write).toHaveBeenCalledWith({订阅转换配置:{UDP:true,SUBAPI:'https://converter.example',SUBCONFIG:'https://config.example?key=1'}}); });
   it('links only finite valid geographic coordinates without credentials', () => { expect(locationMap(normalizeIP({ip:'203.0.113.1',lat:1.3,lon:103.8}))).toBe('https://www.openstreetmap.org/?mlat=1.3&mlon=103.8#map=10/1.3/103.8'); expect(locationMap(normalizeIP({ip:'203.0.113.1',lat:Infinity,lon:0}))).toBeNull(); });
+  it('rejects reserved/internal hosts and malformed IP inputs before external requests', async () => {
+    const fetcher = vi.fn(); vi.stubGlobal('fetch', fetcher);
+    for (const badURL of ['https://0.0.0.0/sub', 'https://100.64.0.1/sub', 'https://localhost./sub', 'https://intranet/sub']) {
+      expect((await tool('converter-check', { baseURL: badURL }))!.status).toBe(400);
+    }
+    for (const badIP of ['::::', '...', '999.999.999.999', '127.0.0.1', '::1']) {
+      expect((await tool('ip-info', { ip: badIP }))!.status).toBe(400);
+      expect((await tool('proxyip-check', { address: badIP }))!.status).toBe(400);
+    }
+    expect(fetcher).not.toHaveBeenCalled();
+  });
+  it('surfaces HTTP status cleanly when upstream returns non-JSON error body to frontend api client', async () => {
+    const { api } = await import('../src/api/client');
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('Service Unavailable', { status: 503 })));
+    await expect(api('/api/session')).rejects.toThrow('503');
+  });
 });

@@ -1,5 +1,6 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { createExecutionContext, waitOnExecutionContext } from 'cloudflare:test';
+import * as runtimeModule from '../server/runtime';
 import worker from '../server/index';
 
 function fixture() {
@@ -167,4 +168,38 @@ it('serves the network deep link only after login and keeps the public homepage 
   const home = await page('/'); expect(home.status).toBe(200);
   expect(await home.text()).toContain('/index.html');
   expect((await page('/wrong/illumination/network')).status).toBe(404);
+});
+
+it('skips tunnel runtime initialization on health, homepage, assets and anonymous login routes', async () => {
+  const spy = vi.spyOn(runtimeModule, 'createRuntime');
+  try {
+    const f = fixture();
+    const env = { ...f.env, ASSETS: { fetch: async (req: Request) => new Response(`<html><head></head><body>${new URL(req.url).pathname}</body></html>`, { headers: { 'Content-Type': 'text/html' } }) } };
+    for (const path of ['/api/health', '/', '/favicon.svg', '/test-entry/spark', '/unknown-probe']) {
+      const ctx = createExecutionContext();
+      const response = await worker.fetch(new Request(`https://example.com${path}`), env as any, ctx);
+      await waitOnExecutionContext(ctx);
+      expect([200, 404]).toContain(response.status);
+    }
+    expect(spy).not.toHaveBeenCalled();
+  } finally {
+    spy.mockRestore();
+  }
+});
+
+it('accepts valid auth cookie alongside stale duplicate cookies and recovers from corrupt KV records', async () => {
+  const f = fixture();
+  const validCookie = await login(f);
+  const combinedCookie = `auth=stale-path-token; ${validCookie}`;
+  f.data.set('config.json', JSON.stringify({ 协议类型: 'trojan' }));
+  const configRes = await f.request('/api/config', undefined, combinedCookie);
+  expect(configRes.status).toBe(200);
+  const config = await configRes.json() as any;
+  expect(config.协议类型).toBe('trojan');
+  expect(config.反代.PROXYIP).toBe('auto');
+  expect((await f.request('/api/config', { 反代: { SOCKS5: { 启用: 'gopher' } } }, combinedCookie)).status).toBe(400);
+  f.data.set('log.json', '{corrupt-json');
+  const logsRes = await f.request('/api/logs', undefined, combinedCookie);
+  expect(logsRes.status).toBe(200);
+  expect(await logsRes.json()).toEqual([]);
 });

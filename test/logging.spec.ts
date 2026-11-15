@@ -42,3 +42,15 @@ it('respects OFF_LOG and notification-only events', async () => {
   await f.runtime.recordLog(f.env, f.request, '192.0.2.1', 'Get_Best_SUB', {}, false);
   expect(f.data.has('log.json')).toBe(false);
 });
+it('trims oversized UTF-8 logs below 4 MiB while retaining newest entries', async () => {
+  const f = logFixture();
+  const filler = '日'.repeat(40000);
+  const existing = Array.from({ length: 40 }, (_, index) => ({ TYPE: 'Save_Config', IP: '192.0.2.1', UA: `${index}-${filler}`, TIME: index }));
+  f.data.set('log.json', JSON.stringify(existing));
+  await f.runtime.recordLog(f.env, f.request, '192.0.2.9', 'Init_Config', {});
+  const raw = f.data.get('log.json')!;
+  expect(new TextEncoder().encode(raw).byteLength).toBeLessThanOrEqual(4 * 1024 * 1024);
+  const saved = JSON.parse(raw);
+  expect(saved.at(-1).TYPE).toBe('Init_Config');
+  expect(saved.length).toBeLessThan(41);
+});

@@ -1,14 +1,33 @@
 import type { WorkerEnv } from '../env';
 import type { TunnelRuntime } from '../types';
 
+export type RuntimeSource = TunnelRuntime | (() => TunnelRuntime);
+function resolveRuntime(source: RuntimeSource): TunnelRuntime {
+  return typeof source === 'function' ? source() : source;
+}
+
 export const DEFAULT_KEY = '勿动此默认密钥，有需求请自行通过添加变量KEY进行修改';
 export function administrator(env: WorkerEnv): string {
   return env.GO_ON || env.admin || env.PASSWORD || env.password || env.pswd || env.TOKEN || env.KEY || env.UUID || env.uuid || '';
 }
-export async function identity(runtime: TunnelRuntime, env: WorkerEnv, hostname: string) {
+export function readCookies(header: string | null, name: string, limit = 8): string[] {
+  if (!header) return [];
+  const prefix = `${name}=`;
+  const values: string[] = [];
+  for (const part of header.split(';')) {
+    const trimmed = part.trim();
+    if (trimmed.startsWith(prefix)) {
+      const value = trimmed.slice(prefix.length);
+      if (value) values.push(value);
+      if (values.length >= limit) break;
+    }
+  }
+  return values;
+}
+export async function identity(runtime: RuntimeSource, env: WorkerEnv, hostname: string) {
   const admin = administrator(env);
   const key = env.KEY || DEFAULT_KEY;
-  const hash = await runtime.hashIdentity(admin + key);
+  const hash = await resolveRuntime(runtime).hashIdentity(admin + key);
   const fixed = env.UUID || env.uuid;
   const uuid = fixed && /^[\da-f]{8}-[\da-f]{4}-4[\da-f]{3}-[89ab][\da-f]{3}-[\da-f]{12}$/i.test(fixed)
     ? fixed.toLowerCase()
@@ -21,13 +40,15 @@ function equals(left: string, right: string): boolean {
   for (let i = 0; i < right.length; i++) mismatch |= (left.charCodeAt(i) || 0) ^ right.charCodeAt(i);
   return mismatch === 0;
 }
-export async function authToken(runtime: TunnelRuntime, request: Request, env: WorkerEnv): Promise<string> {
-  return runtime.hashIdentity((request.headers.get('User-Agent') || 'null') + (env.KEY || DEFAULT_KEY) + administrator(env));
+export async function authToken(runtime: RuntimeSource, request: Request, env: WorkerEnv): Promise<string> {
+  return resolveRuntime(runtime).hashIdentity((request.headers.get('User-Agent') || 'null') + (env.KEY || DEFAULT_KEY) + administrator(env));
 }
-export async function authenticated(runtime: TunnelRuntime, request: Request, env: WorkerEnv): Promise<boolean> {
+export async function authenticated(runtime: RuntimeSource, request: Request, env: WorkerEnv): Promise<boolean> {
   if (!administrator(env)) return false;
-  const cookie = (request.headers.get('Cookie') || '').split(';').find(x => x.trim().startsWith('auth='))?.trim().slice(5) || '';
-  return !!cookie && equals(cookie, await authToken(runtime, request, env));
+  const cookies = readCookies(request.headers.get('Cookie'), 'auth');
+  if (!cookies.length) return false;
+  const expected = await authToken(runtime, request, env);
+  return cookies.some(token => equals(token, expected));
 }
 export function cookie(request: Request, token: string): string {
   const secure = new URL(request.url).protocol === 'https:';

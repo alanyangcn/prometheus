@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useToastMessage } from '../composables/useToast';
-import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue';
-import { attachLiquidGlass } from '../features/appearance/liquidGlass';
+import { computed, nextTick, onBeforeUnmount, ref } from 'vue';
+import { vGlassDialog } from '../features/appearance/glassDialog';
 import { useSessionStore } from '../stores/session';
 const session = useSessionStore();
 const dialog = ref<HTMLDialogElement | null>(null);
@@ -27,14 +27,12 @@ async function checkConfiguration() {
     return false;
   } finally { checking.value = false; }
 }
-let removeGlass: (() => void) | undefined;
 defineExpose({ checkConfiguration });
-onMounted(() => { if (dialog.value) removeGlass = attachLiquidGlass(dialog.value); });
-onUnmounted(() => removeGlass?.());
+onBeforeUnmount(() => dialog.value?.close());
 </script>
 <template>
 
-  <dialog ref="dialog" class="configuration-dialog" tabindex="-1" autofocus aria-labelledby="configuration-title">
+  <dialog ref="dialog" v-glass-dialog class="configuration-dialog" tabindex="-1" autofocus aria-labelledby="configuration-title">
     <h2 id="configuration-title">{{ title }}</h2>
     <p v-if="missing.includes('GO_ON')">需要设置 <strong>GO_ON</strong> 参数，用作管理员密码。</p>
     <p v-if="missing.includes('STORAGE')">需要设置 <strong>STORAGE</strong>，绑定名称必须为 <code>STORAGE</code>。</p>

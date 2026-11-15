@@ -2,7 +2,7 @@ import { tools } from './tools';
 import type { WorkerEnv } from '../env';
 import type { TunnelRuntime } from '../types';
 import type { Configuration, JsonValue } from '../../shared/config';
-import { administrator, authenticated, authToken, cookie, identity } from '../auth/session';
+import { administrator, authenticated, authToken, cookie, identity, type RuntimeSource } from '../auth/session';
 
 function json(value: unknown, status = 200, headers?: HeadersInit): Response {
   const response = Response.json(value, { status, headers });
@@ -45,6 +45,11 @@ function validateConfig(update: Configuration, baseline: Configuration): void {
   if (update.协议类型 !== undefined && !['vless', 'trojan', 'ss'].includes(String(update.协议类型))) throw new Error('不支持的协议');
   if (update.传输协议 !== undefined && !['ws', 'grpc', 'xhttp'].includes(String(update.传输协议))) throw new Error('不支持的传输协议');
   if (update.SS && object(update.SS) && update.SS.加密方式 !== undefined && !['aes-128-gcm', 'aes-256-gcm'].includes(String(update.SS.加密方式))) throw new Error('不支持的 Shadowsocks 加密算法');
+  const reverse = object(update.反代) ? update.反代 : {};
+  const socks5 = object(reverse.SOCKS5) ? reverse.SOCKS5 : {};
+  if (socks5.启用 !== undefined && socks5.启用 !== null && socks5.启用 !== false && !['socks5', 'http', 'https', 'turn', 'sstp'].includes(String(socks5.启用).toLowerCase())) {
+    throw new Error('不支持的上游代理协议');
+  }
 }
 async function body(request: Request): Promise<unknown> {
   const text = await request.text();
@@ -52,7 +57,7 @@ async function body(request: Request): Promise<unknown> {
   return JSON.parse(text);
 }
 
-export async function management(request: Request, env: WorkerEnv, runtime: TunnelRuntime, ctx: ExecutionContext): Promise<Response | null> {
+export async function management(request: Request, env: WorkerEnv, runtimeSource: RuntimeSource, ctx: ExecutionContext): Promise<Response | null> {
   const url = new URL(request.url);
   const originalPath = url.pathname;
   const path = aliases[originalPath] || originalPath;
@@ -62,7 +67,7 @@ export async function management(request: Request, env: WorkerEnv, runtime: Tunn
     if (origin && origin !== url.origin) return json({ error: '拒绝跨站请求' }, 403);
     if (!['POST', 'PUT'].includes(request.method)) return json({ error: '不支持此方法' }, 405);
   }
-  if (path === '/api/session') return json({ configured: !!administrator(env), authenticated: await authenticated(runtime, request, env), storage: !!env.STORAGE });
+  if (path === '/api/session') return json({ configured: !!administrator(env), authenticated: await authenticated(runtimeSource, request, env), storage: !!env.STORAGE });
   if (path === '/api/login' || (originalPath === '/login' && write)) {
     const missing = [...(!administrator(env) ? ['GO_ON'] : []), ...(!env.STORAGE ? ['STORAGE'] : [])];
     if (missing.length) return json({ error: `请先配置 ${missing.join(' 和 ')}` }, 503);
@@ -75,7 +80,7 @@ export async function management(request: Request, env: WorkerEnv, runtime: Tunn
       } else password = new URLSearchParams(await request.text()).get('password');
     } catch { return json({ error: '无效的登录请求' }, 400); }
     if (typeof password !== 'string' || password !== administrator(env).replace(/[\r\n]/g, '')) return json({ error: '密码错误' }, 401);
-    return json({ success: true }, 200, { 'Set-Cookie': cookie(request, await authToken(runtime, request, env)) });
+    return json({ success: true }, 200, { 'Set-Cookie': cookie(request, await authToken(runtimeSource, request, env)) });
   }
   if (path === '/api/logout' || originalPath === '/logout') {
     if (path === '/api/logout' && !write) return json({ error: '请使用 POST' }, 405);
@@ -83,8 +88,9 @@ export async function management(request: Request, env: WorkerEnv, runtime: Tunn
   }
   const known = ['/api/config', '/api/config/reset', '/api/addresses', '/api/logs', '/api/proxy-check'];
   if (!known.includes(path) && !path.startsWith('/api/tools/')) return null;
-  if (!await authenticated(runtime, request, env)) return json({ error: '请先登录' }, 401);
+  if (!await authenticated(runtimeSource, request, env)) return json({ error: '请先登录' }, 401);
   if (!env.STORAGE) return json({ error: '请绑定 STORAGE 命名空间' }, 503);
+  const runtime: TunnelRuntime = typeof runtimeSource === 'function' ? runtimeSource() : runtimeSource;
   const id = await identity(runtime, env, url.hostname);
   const record = (event: string) => {
     ctx.waitUntil((async () => {
@@ -118,7 +124,7 @@ export async function management(request: Request, env: WorkerEnv, runtime: Tunn
       validateConfig(update, config);
       const saved = merge(config, update);
       if (saved.协议类型 === 'ss' && saved.传输协议 !== 'ws') throw new Error('Shadowsocks 仅支持 WebSocket 传输');
-      await env.STORAGE.put('config.json', JSON.stringify(saved));
+      await env.STORAGE.put('config.json', JSON.stringify(saved, null, 2));
       record('Save_Config');
       return json({ success: true });
     }
@@ -138,7 +144,12 @@ export async function management(request: Request, env: WorkerEnv, runtime: Tunn
     }
     if (path === '/api/logs') {
       if (write) return json({ error: '日志接口只读' }, 405);
-      return json(JSON.parse(await env.STORAGE.get('log.json') || '[]'));
+      try {
+        const parsed: unknown = JSON.parse(await env.STORAGE.get('log.json') || '[]');
+        return json(Array.isArray(parsed) ? parsed : []);
+      } catch {
+        return json([]);
+      }
     }
     return json({ error: 'Not found' }, 404);
   } catch (error) {

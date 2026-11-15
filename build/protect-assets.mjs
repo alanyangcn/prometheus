@@ -15,5 +15,6 @@ export async function protectAssets(source) {
   // Two random-looking XOR shares change key representation, not cryptographic strength.
   const mask = randomBytes(32);
   const masked = Buffer.from(rawKey.map((byte, index) => byte ^ mask[index]));
+  rawKey.fill(0);
   return { manifest, key: { parts: [mask.toString('base64'), masked.toString('base64')] } };
 }

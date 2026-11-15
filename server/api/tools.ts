@@ -5,11 +5,53 @@ import type { WorkerEnv } from '../env';
 import type { TunnelRuntime } from '../types';
 const PREFIX = '/api/tools/';
 const reply = (data: unknown, status = 200) => Response.json(data, { status, headers: { 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' } });
+export function isPublicHost(hostname: string): boolean {
+  const host = hostname.replace(/\.$/, '').toLowerCase();
+  if (!host || !host.includes('.') || host === 'localhost' || host.endsWith('.localhost') || host.endsWith('.local') || host.endsWith('.internal') || host.startsWith('[')) {
+    return false;
+  }
+  if (/^\d{1,3}(?:\.\d{1,3}){3}$/.test(host)) {
+    const parts = host.split('.').map(Number);
+    if (parts.some(part => part > 255)) return false;
+    const [a, b] = parts;
+    if (a === 0 || a === 10 || a === 127 || (a === 100 && b >= 64 && b <= 127) || (a === 169 && b === 254) || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168) || (a === 198 && (b === 18 || b === 19)) || a >= 224) {
+      return false;
+    }
+  }
+  return true;
+}
+function isValidIP(value: string): boolean {
+  if (/^\d{1,3}(?:\.\d{1,3}){3}$/.test(value)) {
+    const parts = value.split('.').map(Number);
+    return parts.every(part => part <= 255) && parts[0] !== 0 && parts[0] !== 127;
+  }
+  if (!value.includes(':') || value.includes('[') || value.includes(']')) return false;
+  try {
+    const parsed = new URL(`https://[${value}]/`).hostname;
+    return parsed !== '[::]' && parsed !== '[::1]';
+  } catch {
+    return false;
+  }
+}
+function isValidProxyIP(value: string): boolean {
+  if (isValidIP(value)) return true;
+  const bracketed = /^\[([^\]]+)\]:(\d{1,5})$/.exec(value);
+  if (bracketed) {
+    const port = Number(bracketed[2]);
+    return port >= 1 && port <= 65535 && isValidIP(bracketed[1]!);
+  }
+  const v4Port = /^(\d{1,3}(?:\.\d{1,3}){3}):(\d{1,5})$/.exec(value);
+  if (v4Port) {
+    const port = Number(v4Port[2]);
+    return port >= 1 && port <= 65535 && isValidIP(v4Port[1]!);
+  }
+  return false;
+}
 function https(value: unknown, allowHTTP = false): URL {
   if (typeof value !== 'string') throw new Error('需要 HTTPS 地址');
   const url = new URL(value.includes('://') ? value : `https://${value}`);
   if ((!['https:', ...(allowHTTP ? ['http:'] : [])].includes(url.protocol)) || url.username || url.password || url.hash) throw new Error('地址必须为 HTTPS，不能包含凭据');
-  if (url.hostname === 'localhost' || /^(127\.|10\.|192\.168\.|169\.254\.|172\.(1[6-9]|2\d|3[01])\.)/.test(url.hostname) || url.hostname.startsWith('[')) throw new Error('需要公共 HTTPS 地址');
+  if (!isPublicHost(url.hostname)) throw new Error('需要公共 HTTPS 地址');
   return url;
 }
 async function remote(url: URL | string, init?: RequestInit) {
@@ -53,7 +95,7 @@ export async function tools(request: Request, env: WorkerEnv, runtime: TunnelRun
       return reply(entries.slice(0, 20000));
     }
     if (action === 'proxyip-check') {
-      if (typeof data.address !== 'string' || !/^[\da-fA-F:.]+$/.test(data.address)) throw new Error('PROXYIP 地址无效');
+      if (typeof data.address !== 'string' || !isValidProxyIP(data.address)) throw new Error('PROXYIP 地址无效');
       const result = await (await remote(`https://api.090227.xyz/check?proxyip=${encodeURIComponent(data.address)}`)).json() as Record<string, unknown>;
       if (typeof result.success !== 'boolean') throw new Error('PROXYIP 检测响应无效');
       return reply({ success: result.success, responseTime: Number(result.responseTime) || null, supports_ipv4: result.supports_ipv4 === true, supports_ipv6: result.supports_ipv6 === true });
@@ -71,7 +113,7 @@ export async function tools(request: Request, env: WorkerEnv, runtime: TunnelRun
       return reply({ success: true, version, baseURL });
     }
     if (action === 'ip-info') {
-      if (typeof data.ip !== 'string' || !/^[\da-fA-F:.]+$/.test(data.ip)) throw new Error('IP 无效');
+      if (typeof data.ip !== 'string' || !isValidIP(data.ip)) throw new Error('IP 无效');
       let info: Record<string, unknown>;
       try { info = await (await remote(`https://api.ipapi.is/?q=${encodeURIComponent(data.ip)}`)).json() as Record<string, unknown>; } catch { info = await (await remote(`https://api.090227.xyz/api/ipapi?ip=${encodeURIComponent(data.ip)}`)).json() as Record<string, unknown>; }
       if (!info.ip || info.error) throw new Error('IP 信息响应无效');

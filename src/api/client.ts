@@ -10,7 +10,17 @@ export async function api<T>(path: string, payload?: unknown): Promise<T> {
     headers: payload === undefined ? undefined : { 'Content-Type': 'application/json' },
     body: payload === undefined ? undefined : JSON.stringify(payload),
   });
-  const data = await response.json();
-  if (!response.ok) throw new Error(typeof data.error === 'string' ? data.error : `请求失败 (${response.status})`);
+  let data: unknown;
+  try {
+    data = await response.json();
+  } catch {
+    throw new Error(`请求失败 (${response.status})`);
+  }
+  if (!response.ok) {
+    const message = data && typeof data === 'object' && 'error' in data && typeof data.error === 'string'
+      ? data.error
+      : `请求失败 (${response.status})`;
+    throw new Error(message);
+  }
   return data as T;
 }

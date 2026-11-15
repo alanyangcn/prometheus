@@ -87,9 +87,10 @@ runtime.worker = {
                     return new Response('重定向中...', { status: 302, headers: { 'Location': `/sub?${params.toString()}` } });
                 }
                 else if (访问路径 === 'login') {
-                    const cookies = request.headers.get('Cookie') || '';
-                    const authCookie = cookies.split(';').find(c => c.trim().startsWith('auth='))?.split('=')[1];
-                    if (authCookie == await runtime.hashIdentity(UA + 加密秘钥 + 管理员密码))
+                    const cookies = (request.headers.get('Cookie') || '').split(';').map(c => c.trim()).filter(c => c.startsWith('auth=')).map(c => c.slice(5)).filter(Boolean);
+                    const expectedAuth = await runtime.hashIdentity(UA + 加密秘钥 + 管理员密码);
+                    const constantEqual = (a, b) => { let diff = a.length ^ b.length; for (let i = 0; i < b.length; i++) diff |= (a.charCodeAt(i) || 0) ^ b.charCodeAt(i); return diff === 0; };
+                    if (cookies.some(c => constantEqual(c, expectedAuth)))
                         return new Response('重定向中...', { status: 302, headers: { 'Location': '/admin' } });
                     if (request.method === 'POST') {
                         const formData = await request.text();
@@ -97,16 +98,18 @@ runtime.worker = {
                         const 输入密码 = params.get('password');
                         if (输入密码 === (typeof 管理员密码 === 'string' ? 管理员密码.replace(/[\r\n]/g, '') : 管理员密码)) {
                             const 响应 = new Response(JSON.stringify({ success: true }), { status: 200, headers: { 'Content-Type': 'application/json;charset=utf-8' } });
-                            响应.headers.set('Set-Cookie', `auth=${await runtime.hashIdentity(UA + 加密秘钥 + 管理员密码)}; Path=/; Max-Age=86400; HttpOnly; Secure; SameSite=Lax`);
+                            const secureFlag = url.protocol === 'https:' ? 'Secure; ' : '';
+                            响应.headers.set('Set-Cookie', `auth=${expectedAuth}; Path=/; Max-Age=86400; HttpOnly; ${secureFlag}SameSite=Lax`);
                             return 响应;
                         }
                     }
                     return runtime.serveApp(request, '/login');
                 }
                 else if (访问路径 === 'admin' || 访问路径.startsWith('admin/')) {
-                    const cookies = request.headers.get('Cookie') || '';
-                    const authCookie = cookies.split(';').find(c => c.trim().startsWith('auth='))?.split('=')[1];
-                    if (!authCookie || authCookie !== await runtime.hashIdentity(UA + 加密秘钥 + 管理员密码))
+                    const cookies = (request.headers.get('Cookie') || '').split(';').map(c => c.trim()).filter(c => c.startsWith('auth=')).map(c => c.slice(5)).filter(Boolean);
+                    const expectedAuth = await runtime.hashIdentity(UA + 加密秘钥 + 管理员密码);
+                    const constantEqual = (a, b) => { let diff = a.length ^ b.length; for (let i = 0; i < b.length; i++) diff |= (a.charCodeAt(i) || 0) ^ b.charCodeAt(i); return diff === 0; };
+                    if (!cookies.some(c => constantEqual(c, expectedAuth)))
                         return new Response('重定向中...', { status: 302, headers: { 'Location': '/login' } });
                     if (访问路径 === 'admin/log.json') {
                         const 读取日志内容 = await env.STORAGE.get('log.json') || '[]';
@@ -116,7 +119,11 @@ runtime.worker = {
                         if (url.searchParams.get('url')) {
                             const 待验证优选URL = url.searchParams.get('url');
                             try {
-                                new URL(待验证优选URL);
+                                const parsedSource = new URL(待验证优选URL);
+                                const sourceHost = parsedSource.hostname.replace(/\.$/, '').toLowerCase();
+                                if (!['https:', 'http:'].includes(parsedSource.protocol) || parsedSource.username || parsedSource.password || !sourceHost.includes('.') || sourceHost === 'localhost' || sourceHost.endsWith('.localhost') || sourceHost.endsWith('.local') || sourceHost.endsWith('.internal') || sourceHost.startsWith('[') || /^(0\.|127\.|10\.|192\.168\.|169\.254\.|100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\.|172\.(1[6-9]|2\d|3[01])\.|198\.1[89]\.|2(?:2[4-9]|[3-5]\d)\.)/.test(sourceHost)) {
+                                    throw new Error('需要公共 HTTP/HTTPS 地址');
+                                }
                                 const 请求优选API内容 = await runtime.fetchAddressSources([待验证优选URL], url.searchParams.get('port') || '443', 本机标识头);
                                 let 优选API的IP = 请求优选API内容[0].length > 0 ? 请求优选API内容[0] : 请求优选API内容[1];
                                 优选API的IP = 优选API的IP.map(item => item.replace(/#(.+)$/, (_, remark) => '#' + decodeURIComponent(remark)));
@@ -271,7 +278,8 @@ runtime.worker = {
                 }
                 else if (访问路径 === 'logout' || uuidRegex.test(访问路径)) {
                     const 响应 = new Response('重定向中...', { status: 302, headers: { 'Location': '/login' } });
-                    响应.headers.set('Set-Cookie', 'auth=; Path=/; Max-Age=0; HttpOnly');
+                    const secureFlag = url.protocol === 'https:' ? 'Secure; ' : '';
+                    响应.headers.set('Set-Cookie', `auth=; Path=/; Max-Age=0; HttpOnly; ${secureFlag}SameSite=Lax`);
                     return 响应;
                 }
                 else if (访问路径 === 'sub') {

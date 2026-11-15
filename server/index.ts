@@ -3,6 +3,7 @@ import { createRuntime } from './runtime';
 import { management } from './api/management';
 import { administrator, authenticated } from './auth/session';
 import type { WorkerEnv } from './env';
+import type { TunnelRuntime } from './types';
 import { hasEntryMarker, recordEntry } from './auth/entry-marker';
 
 const legacyManagementPaths = new Set(['/admin/config.json', '/admin/ADD.txt', '/admin/log.json', '/admin/init', '/admin/getADDAPI', '/admin/check']);
@@ -43,7 +44,8 @@ export default {
       headers.delete('Content-Length');
       return new Response(html.body, { status: html.status, headers });
     };
-    const runtime = createRuntime({ socketConnect: connect, serveApp });
+    let cachedRuntime: TunnelRuntime | undefined;
+    const getRuntime = () => (cachedRuntime ??= createRuntime({ socketConnect: connect, serveApp }));
     const rememberEntry = (response: Response) => recordEntry(response, request, env, base);
     const outsidePage = async () => base && await hasEntryMarker(request, env, base) ? redirectToLogin() : notFound();
     const redirectToLogin = () => new Response(null, { status: 302, headers: { Location: base + '/spark', 'Cache-Control': 'no-store' } });
@@ -51,28 +53,28 @@ export default {
       const upgrade = request.headers.get('Upgrade')?.toLowerCase() === 'websocket';
       const read = request.method === 'GET' || request.method === 'HEAD';
       if (prefixed && !upgrade && legacyManagementPaths.has(pagePath)) {
-        if (!await authenticated(runtime, request, env)) return read ? rememberEntry(redirectToLogin()) : Response.json({ error: '请先登录' }, { status: 401 });
+        if (!await authenticated(getRuntime, request, env)) return read ? rememberEntry(redirectToLogin()) : Response.json({ error: '请先登录' }, { status: 401 });
         const normalizedUrl = new URL(request.url);
         normalizedUrl.pathname = pagePath;
         const normalizedRequest = new Request(normalizedUrl, request);
-        const response = await management(normalizedRequest, env, runtime, ctx);
-        const result = response || await runtime.worker.fetch(normalizedRequest, env, ctx);
+        const response = await management(normalizedRequest, env, getRuntime, ctx);
+        const result = response || await getRuntime().worker.fetch(normalizedRequest, env, ctx);
         return read ? rememberEntry(result) : result;
       }
       if (prefixed && !upgrade && read) {
         if (pagePath === '/setup' || pagePath === '/') return rememberEntry(redirectToLogin());
         if (managementPages.has(pagePath)) {
-          if (pagePath !== '/spark' && (!env.STORAGE || !await authenticated(runtime, request, env))) return rememberEntry(redirectToLogin());
+          if (pagePath !== '/spark' && (!env.STORAGE || !await authenticated(getRuntime, request, env))) return rememberEntry(redirectToLogin());
           return rememberEntry(await serveApp(request, pagePath));
         }
         // Browser navigation to any other path within the management prefix requires login.
-        if (!await authenticated(runtime, request, env)) return rememberEntry(redirectToLogin());
+        if (!await authenticated(getRuntime, request, env)) return rememberEntry(redirectToLogin());
         return rememberEntry(notFound());
       }
       // Outside paths reveal the entry only to browsers with an unexpired discovery marker.
       if (!upgrade && (url.pathname === '/spark' || url.pathname === '/illumination' || url.pathname.startsWith('/illumination/') || url.pathname === '/admin.html' || url.pathname === '/login' || url.pathname === '/setup' || url.pathname === '/admin' || url.pathname.startsWith('/admin/'))) return read ? outsidePage() : notFound();
       if (url.pathname === '/api/health') return Response.json({ name: 'prometheus', status: 'ok' });
-      const response = await management(request, env, runtime, ctx);
+      const response = await management(request, env, getRuntime, ctx);
       if (response) return response;
       if (url.pathname.startsWith('/api/')) return Response.json({ error: 'Not found' }, { status: 404 });
       const tunnel = upgrade || request.method === 'POST';
@@ -87,7 +89,7 @@ export default {
         return read ? outsidePage() : notFound();
       }
       if (!tunnel && !administrator(env)) return notFound();
-      return await runtime.worker.fetch(request, env, ctx);
+      return await getRuntime().worker.fetch(request, env, ctx);
     } catch (error) {
       console.error('Prometheus request failed:', error instanceof Error ? error.message : 'Unknown error');
       return Response.json({ error: '请求处理失败' }, { status: 500 });
