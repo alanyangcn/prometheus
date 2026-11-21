@@ -12,12 +12,12 @@
   "observability": {
     "enabled": true
   },
-  "account_id": "38230428abeeaf3dbe08223cfbf5f3fa",
+  "account_id": "ac7eeee2ac55f6e94433bc62aad2da53",
   "keep_vars": true,
   "kv_namespaces": [
     {
       "binding": "STORAGE",
-      "id": "7b1fcef07e01418999a395119048c775"
+      "id": "219f845bda1a403e96d2705baad24173"
     }
   ],
   "workers_dev": true,
