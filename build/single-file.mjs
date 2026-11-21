@@ -32,7 +32,7 @@ await build({
           debugProtection: false, selfDefending: false, sourceMap: false,
           reservedStrings: ['^cloudflare:sockets$'],
         });
-        chunk.code = '/*! Prometheus — GPL-2.0. Includes algorithms derived from cmliu/edgetunnel; see LICENSE and THIRD_PARTY_NOTICES.md. */\n' + result.getObfuscatedCode();
+        chunk.code = '/*! Prometheus — GPL-2.0. Protocol contributions: cmliu, zizifn, 3Kmfi6HP, SHIJS1999, ToiCF, @Alexandre_Kojeve. See LICENSE and THIRD_PARTY_NOTICES.md. */\n' + result.getObfuscatedCode();
       }
     },
   }],

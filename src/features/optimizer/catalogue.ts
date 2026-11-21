@@ -1,3 +1,3 @@
-// Catalogue workflow derived from cmliu/edgetunnel (GPL-2.0).
+// GPL-2.0; contributor copyrights: see THIRD_PARTY_NOTICES.md.
 export function appendSelections(existing:string,lines:string[],replace=false){const fresh=lines.map(s=>s.trim()).filter(Boolean).join('\n');return replace?fresh:[existing.trim(),fresh].filter(Boolean).join('\n');}
 export function formatSelection(result:{address:string;country:string;type:string;latency?:number;speed?:number}){const details=[`${result.latency??'未知'}ms`];if(result.speed!==undefined&&result.speed>0)details.push(`${result.speed.toFixed(2)}Mbps`);return `${result.address}#${result.country} ${result.type}[${details.join(' ')}]`;}

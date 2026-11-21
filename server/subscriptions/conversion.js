@@ -1,4 +1,4 @@
-// Derived from cmliu/edgetunnel a8ab111. GPL-2.0; see THIRD_PARTY_NOTICES.md.
+// GPL-2.0; contributor copyrights: see THIRD_PARTY_NOTICES.md.
 export const initializers = [
   (runtime) => {
 runtime.transportConfig = function 获取传输协议配置(配置 = {}) {
@@ -580,7 +580,7 @@ runtime.patchSurge = function Surge订阅配置文件热补丁(content, url, con
 };
   },
   (runtime) => {
-runtime.fetchSubscriptionSource = async function 获取优选订阅生成器数据(优选订阅生成器HOST, uid = "000000") {
+runtime.fetchSubscriptionSource = async function 获取优选订阅生成器数据(优选订阅生成器HOST, uid = "000000", strict = false) {
     const safeDecode = (val) => { try { return decodeURIComponent(val); } catch { return val; } };
     let 优选IP = [], 其他节点LINK = '', 格式化HOST = 优选订阅生成器HOST.replace(/^sub:\/\//i, 'https://').split('#')[0].split('?')[0];
     if (!/^https?:\/\//i.test(格式化HOST))
@@ -590,15 +590,18 @@ runtime.fetchSubscriptionSource = async function 获取优选订阅生成器数�
         格式化HOST = url.origin;
     }
     catch (error) {
+        if (strict) throw new Error('订阅生成器响应无效或不兼容 Prometheus 请求');
         优选IP.push(`127.0.0.1:1234#${优选订阅生成器HOST}优选订阅生成器格式化异常:${error.message}`);
         return [优选IP, 其他节点LINK];
     }
     const 优选订阅生成器URL = `${格式化HOST}/sub?host=example.com&uuid=00000000-0000-4000-8000-000000000000`;
     try {
         const response = await fetch(优选订阅生成器URL, {
-            headers: { 'User-Agent': runtime.汇聚订阅_UA + ' Uid/0x' + uid + ' Version/' + runtime.EDT_版本号 }
+            headers: { 'User-Agent': runtime.汇聚订阅_UA + ' Uid/0x' + uid + ' Version/' + runtime.protocolVersion },
+            ...(strict ? { signal: AbortSignal.timeout(8000), redirect: 'manual' } : {})
         });
         if (!response.ok) {
+            if (strict) throw new Error('订阅生成器请求失败');
             优选IP.push(`127.0.0.1:1234#${优选订阅生成器HOST}优选订阅生成器异常:${response.statusText}`);
             return [优选IP, 其他节点LINK];
         }
@@ -619,14 +622,16 @@ runtime.fetchSubscriptionSource = async function 获取优选订阅生成器数�
                     优选IP.push(地址端口 + 备注);
                 }
             }
-            else {
+            else if (!strict || /^[a-z][a-z0-9+.-]*:\/\//i.test(行内容.trim())) {
                 其他节点LINK += 行内容 + '\n';
             }
         }
     }
     catch (error) {
+        if (strict) throw new Error('订阅生成器响应无效或不兼容 Prometheus 请求');
         优选IP.push(`127.0.0.1:1234#${优选订阅生成器HOST}优选订阅生成器异常:${error.message}`);
     }
+    if (strict && !优选IP.length && !其他节点LINK.trim()) throw new Error('订阅生成器没有返回有效节点');
     return [优选IP, 其他节点LINK];
 };
   },
@@ -644,7 +649,7 @@ runtime.fetchAddressSources = async function 请求优选API(urls, 默认端口 
         const 优选IP作为反代IP = url.toLowerCase().includes('proxyip=true');
         if (urlWithoutHash.toLowerCase().startsWith('sub://')) {
             try {
-                const [优选IP, 其他节点LINK] = await runtime.fetchSubscriptionSource(urlWithoutHash, uid);
+                const [优选IP, 其他节点LINK] = await runtime.fetchSubscriptionSource(urlWithoutHash, uid, true);
                 if (API备注名) {
                     for (const ip of 优选IP) {
                         const 处理后IP = ip.includes('#')
@@ -683,7 +688,7 @@ runtime.fetchAddressSources = async function 请求优选API(urls, 默认端口 
             const timeoutId = setTimeout(() => controller.abort(), 超时时间);
             let response, buffer;
             try {
-                response = await fetch(urlWithoutHash, { signal: controller.signal, headers: { 'User-Agent': runtime.汇聚订阅_UA + ' Uid/0x' + uid + ' Version/' + runtime.EDT_版本号 } });
+                response = await fetch(urlWithoutHash, { signal: controller.signal, headers: { 'User-Agent': runtime.汇聚订阅_UA + ' Uid/0x' + uid + ' Version/' + runtime.protocolVersion } });
                 if (!response.ok)
                     return;
                 buffer = await response.arrayBuffer();

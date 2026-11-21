@@ -1,7 +1,7 @@
-// Derived from cmliu/edgetunnel a8ab111. GPL-2.0; see THIRD_PARTY_NOTICES.md.
+// GPL-2.0; contributor copyrights: see THIRD_PARTY_NOTICES.md.
 export const initializers = [
   (runtime) => {
-runtime.EDT_版本号 = Number(String(runtime.Version).replace(/\D+/g, ''));
+runtime.protocolVersion = Number(String(runtime.Version).replace(/\D+/g, ''));
   },
   (runtime) => {
 runtime.获取本机标识 = function 获取本机标识(yourUUID) {

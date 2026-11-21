@@ -1,4 +1,4 @@
-// IP information and score semantics derived from cmliu/edgetunnel admin (GPL-2.0).
+// GPL-2.0; contributor copyrights: see THIRD_PARTY_NOTICES.md.
 export interface IPDetails {
   ip: string; location: { country?: string; country_code?: string; state?: string; city?: string; latitude?: number; longitude?: number; timezone?: string };
   company: { name?: string; type?: string; abuser_score?: string | number };

@@ -19,10 +19,12 @@ export interface RuntimeDependencies {
   socketConnect?: typeof import('cloudflare:sockets').connect;
   serveApp?: (request: Request, path: string) => Promise<Response>;
 }
-// The dynamic registry is internal to migrated JS algorithms. Public boundaries below
+// The dynamic registry is internal to the protocol and transport modules. Public boundaries below
 // have explicit contracts; it is created afresh for every request.
 export interface TunnelRuntime extends RuntimeDependencies {
   [name: string]: any;
+  protocolVersion: number;
+  isGeneratorClient(userAgent: string): boolean;
   worker: { fetch(request: Request, env: WorkerEnv, ctx: ExecutionContext): Promise<Response> };
   parseVless(data: Uint8Array, uuid: string): ParsedProtocol;
   parseTrojan(data: Uint8Array, password: string): ParsedProtocol;

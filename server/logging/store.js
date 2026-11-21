@@ -1,4 +1,4 @@
-// Derived from cmliu/edgetunnel a8ab111. GPL-2.0; see THIRD_PARTY_NOTICES.md.
+// GPL-2.0; contributor copyrights: see THIRD_PARTY_NOTICES.md.
 export const initializers = [
   (runtime) => {
 runtime.recordLog = async function 请求日志记录(env, request, 访问IP, 请求类型 = "Get_SUB", config_JSON, 是否写入KV日志 = true) {

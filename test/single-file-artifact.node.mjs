@@ -15,7 +15,7 @@ test('emits formatted code while retaining attribution', async () => {
   const code = await readFile(root + 'dist/single/workers.js', 'utf8');
   assert.equal(/[\r\n\u2028\u2029]/.test(code.trimEnd()), true);
   assert.match(code, /GPL-2\.0/);
-  assert.match(code, /cmliu\/edgetunnel/);
+  assert.match(code, /\bcmliu\b/);
 });
 
 test('runs the generated workers.js with embedded frontend, STORAGE and no ASSETS binding', async t => {

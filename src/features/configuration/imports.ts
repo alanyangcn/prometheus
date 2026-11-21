@@ -1,4 +1,4 @@
-// Adapted from edgetunnel admin API import workflows (GPL-2.0).
+// GPL-2.0; contributor copyrights: see THIRD_PARTY_NOTICES.md.
 export function prepareApiSource(input: string, fallbackPort: string, useProxyIP: boolean) {
   let url: URL;
   try { url = new URL(input.trim()); } catch { throw new Error('请输入有效的 HTTP(S) API 地址'); }

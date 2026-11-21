@@ -1,11 +1,11 @@
-// Browser BestCF workflow adapted from cmliu/edgetunnel (GPL-2.0).
+// GPL-2.0; contributor copyrights: see THIRD_PARTY_NOTICES.md.
 export interface Candidate { address: string; ip: string; family: 'ipv4'|'ipv6'|'domain'; port: number }
 export interface Result extends Candidate { latency?: number; speed?: number; country: string; colo: string; type: string; status: 'ok'|'failed'|'cancelled'; error?: string }
 export interface Dependencies { fetch: typeof fetch; now: () => number }
 export const libraries = [
   { label: 'CF 官方 IPv4', url: 'https://cf.090227.xyz/ips-v4' },
   { label: 'CF 官方 IPv6', url: 'https://cf.090227.xyz/ips-v6' },
-  { label: 'CM IPv4', url: 'https://raw.githubusercontent.com/cmliu/cmliu/main/CF-CIDR.txt' },
+  { label: '社区 IPv4', url: 'https://raw.githubusercontent.com/cmliu/cmliu/main/CF-CIDR.txt' },
   ...['13335','209242'].flatMap(asn => ['ipv4','ipv6'].map(family => ({label:`AS${asn} ${family}`,url:`https://raw.githubusercontent.com/ipverse/asn-ip/master/as/${asn}/${family}-aggregated.txt` }))),
 ];
 function ipNumber(ip: string): {value: bigint; bits: number} | null {

@@ -1,6 +1,6 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "prometheus-studio-v2",
+  "name": "prometheus-studio-v3",
   "main": "server/index.ts",
   "compatibility_date": "2026-10-10",
   "assets": {

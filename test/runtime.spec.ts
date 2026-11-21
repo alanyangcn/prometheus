@@ -9,7 +9,7 @@ function vlessHeader(addressType: number, address: number[], command = 1) {
   return new Uint8Array([0, ...id, 0, command, 1, 187, addressType, ...address, 7, 8]);
 }
 
-describe('Migrated protocol compatibility', () => {
+describe('Protocol compatibility', () => {
   it('parses authenticated IPv4 VLESS TCP payloads', () => {
     const runtime = createRuntime();
     const result = runtime.parseVless(vlessHeader(1, [1, 2, 3, 4]), UUID);

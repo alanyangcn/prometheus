@@ -1,4 +1,4 @@
-// Derived from cmliu/edgetunnel a8ab111. GPL-2.0; see THIRD_PARTY_NOTICES.md.
+// GPL-2.0; contributor copyrights: see THIRD_PARTY_NOTICES.md.
 export const initializers = [
   (runtime) => {
 runtime.Version = '2026-10-08 22:23:27';
@@ -55,6 +55,11 @@ runtime.预加载竞速拨号 = false;
 runtime.特征码字典 = ['PROXYIP', 'cmliu', '090227'];
   },
   (runtime) => {
-runtime.汇聚订阅_UA = 'v2rayN/edge' + 'tunnel (https://github.com/' + runtime.特征码字典[1] + '/edge' + 'tunnel)';
+runtime.汇聚订阅_UA = 'v2rayN/Prometheus (https://github.com/alanyangcn/prometheus)';
+runtime.isGeneratorClient = function(userAgent) {
+    const ua = String(userAgent || '').toLowerCase();
+    return ua.includes('prometheus (https://github.com/alanyangcn/prometheus)') ||
+        ((ua.startsWith('v2rayn/') || ua.startsWith('subconverter for ')) && ua.includes('uid/0x') && ua.includes(' version/'));
+};
   }
 ];

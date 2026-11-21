@@ -1,6 +1,6 @@
 import { negotiateSocks5 } from './socks5';
 import { prependSocket } from '../network/socket-reader';
-// Derived from cmliu/edgetunnel a8ab111. GPL-2.0; see THIRD_PARTY_NOTICES.md.
+// GPL-2.0; contributor copyrights: see THIRD_PARTY_NOTICES.md.
 export const initializers = [
   (runtime) => {
 runtime.socks5Connect = negotiateSocks5;

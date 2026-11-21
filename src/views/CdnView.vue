@@ -60,7 +60,7 @@ async function save() {
 <form v-if="draft && !loading && !loadError" class="card cdn-form" @submit.prevent="save">
 <fieldset class="cdn-fields" :disabled="busy">
 <div class="cdn-row"><label for="cdn-mode">反代模式</label><select v-glass-select id="cdn-mode" v-model="accessMode"><option value="auto">PROXYIP</option><option value="other">其他代理</option></select></div>
-<div v-if="accessMode === 'auto'" class="cdn-row"><label for="cdn-ip">PROXYIP</label><div class="cdn-inline"><input id="cdn-ip" v-model="reverse.PROXYIP" :disabled="automatic" placeholder="proxyip.cmliussss.net" /><label class="cdn-check"><input v-model="automatic" type="checkbox" />启用自动获取</label></div></div>
+<div v-if="accessMode === 'auto'" class="cdn-row"><label for="cdn-ip">PROXYIP</label><div class="cdn-inline"><input id="cdn-ip" v-model="reverse.PROXYIP" :disabled="automatic" placeholder="proxy.example.com" /><label class="cdn-check"><input v-model="automatic" type="checkbox" />启用自动获取</label></div></div>
 <div v-else class="cdn-row"><label for="cdn-protocol">代理协议</label><div class="cdn-inline"><select v-glass-select id="cdn-protocol" v-model="protocol" class="protocol-select"><option v-for="value in ['socks5','http','https','turn','sstp']" :key="value">{{ value }}</option></select><span aria-hidden="true">://</span><input :value="String(proxy.账号 || '')" readonly aria-label="代理账号，点击验证" placeholder="user:password@127.0.0.1:1080" @click="openDialog('account')" @keydown.enter.prevent="openDialog('account')" /><label class="cdn-check"><input v-model="proxy.全局" type="checkbox" />启用全局代理</label></div></div>
 <details v-if="accessMode === 'other' && !proxy.全局"><summary>代理目标白名单</summary><ConfigFields :model="proxy" :exclude="['启用','账号','全局']" prefix="cdn-target" /></details>
 </fieldset>

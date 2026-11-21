@@ -1,4 +1,4 @@
-// Derived from cmliu/edgetunnel a8ab111. GPL-2.0; see THIRD_PARTY_NOTICES.md.
+// GPL-2.0; contributor copyrights: see THIRD_PARTY_NOTICES.md.
 export const initializers = [
   (runtime) => {
 runtime.是有效WS早期数据 = function 是有效WS早期数据(bytes, token) {

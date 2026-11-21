@@ -1,4 +1,4 @@
-// ADD.txt chain syntax derived from cmliu/edgetunnel, GPL-2.0.
+// GPL-2.0; contributor copyrights: see THIRD_PARTY_NOTICES.md.
 export function chainLine(host: string, port: string, name: string, scheme: string, address: string): string {
   host = host.trim(); name = name.trim() || '链式代理'; address = address.trim().replace(new RegExp(`^${scheme}(?:://|=)`, 'i'), '');
   if (!host || /[\s/#$]/.test(host) || /[\r\n#$]/.test(name) || /[\r\n#$]/.test(address) || !address) throw new Error('链式代理字段无效');

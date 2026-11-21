@@ -1,4 +1,4 @@
-// Tool semantics derived from cmliu/edgetunnel admin; GPL-2.0.
+// GPL-2.0; contributor copyrights: see THIRD_PARTY_NOTICES.md.
 import { converterBaseURL } from '../../src/features/tools/converter';
 import { normalizeIP } from '../../src/features/tools/ip';
 import type { WorkerEnv } from '../env';

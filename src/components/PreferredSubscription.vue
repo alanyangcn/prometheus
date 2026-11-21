@@ -44,7 +44,7 @@ const mode = computed({ get: () => subscriptionMode(props.model), set: (mode: Su
     <SubscriptionApiImport v-if="helper === 'api'" v-model="addresses" />
     <SubscriptionChainProxy ref="chainProxy" v-model="addresses" />
   </template>
-  <div v-if="mode === 'generator'" class="field"><label for="generator-url">优选订阅生成器</label><input id="generator-url" v-model="sub.SUB" placeholder="sub.cmliussss.net" required /><p class="hint">可填写域名或完整 URL，保存时提取域名。</p></div>
+  <div v-if="mode === 'generator'" class="field"><label for="generator-url">优选订阅生成器</label><input id="generator-url" v-model="sub.SUB" placeholder="subscription.example.com" required /><p class="hint">填写支持 Prometheus 请求标识的生成器域名；完整 URL 保存时提取域名。不兼容的服务请改用自定义地址。</p></div>
   <Teleport to="body"><dialog v-if="optimizing" ref="optimizerDialog" v-glass-dialog class="optimizer-dialog glass-dialog" aria-labelledby="optimizer-title" @close="optimizing = false"><div class="optimizer-heading"><h2 id="optimizer-title">在线优选 IP</h2><button type="button" class="secondary" @click="closeOptimizer">返回优选订阅</button></div><SubscriptionOptimizer v-model="addresses" /></dialog></Teleport>
 </template>
 <style scoped>

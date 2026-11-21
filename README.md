@@ -2,7 +2,7 @@
 
 当前版本：**1.0.0**
 
-基于 Cloudflare Workers 的隧道与订阅服务，配套 Vue 3 管理界面和独立摄影首页。项目已完成参考项目 [cmliu/edgetunnel](https://github.com/cmliu/edgetunnel) 的目标功能迁移，并按当前产品需求整理页面、模块和配置流程。
+基于 Cloudflare Workers 的隧道与订阅服务，配套 Vue 3 管理界面和独立摄影首页。提供节点配置、订阅生成、上游代理和管理工作流。
 
 前端使用 TypeScript、Vite、Vue Router 和 Pinia；后端按认证、配置、协议、传输、代理、订阅和日志拆分。底层协议算法保留聚焦的 JavaScript 模块，新应用入口和 API 使用 TypeScript。功能范围与验证记录见 [功能矩阵](docs/feature-matrix.md)。
 
@@ -15,6 +15,8 @@
 - **配置与管理**：KV 持久化、登录鉴权、自定义管理路径、取消修改、配置重置和操作日志。
 - **连接信息**：当前请求的连接 IP、Cloudflare 机房、网络归属、HTTP/TLS，以及手动 IP 基础查询。来源标记保留未知状态，不生成综合风险评分。
 - **界面**：液态玻璃样式、浅色/深色主题、移动端布局、统一弹窗、选择框、勾选框和 Toast。
+
+生成器模式要求外部服务支持 Prometheus 客户端标识。不兼容或无法读取节点时，订阅接口返回 HTTP 503，不生成占位错误节点。可改用自定义地址或兼容的生成器。
 
 管理导航依次为：**概览 → 订阅来源 → 节点配置 → 上游代理 → 订阅转换 → 连接信息 → 操作日志**。地址库、订阅接口、链式节点和浏览器优选归入订阅来源；ECH 与 TLS、指纹统一在节点配置中保存；代理和手动路径模板归入上游代理。旧 ECH 页面地址跳转到节点配置。桌面使用侧栏，手机使用菜单；表单显示修改状态，普通页面切换前提醒未保存的修改。
 
@@ -85,7 +87,7 @@ BASE_PATH 允许 1–64 个英文字母、数字、下划线或短横线，可�
 pnpm run build
 ```
 
-前端资源输出到 `dist/client/`，Worker 及部署配置输出到 `dist/prometheus_studio_v2/`。此方式需要 `ASSETS` 绑定，供 Wrangler 部署前端资源。当前部署账号为 `luohen2026`，Worker 为 `prometheus-studio-v2`，默认入口为 `https://prometheus-studio-v2.luohen2026.workers.dev`。此账号接回原有 STORAGE；管理密码、路径和 UUID 通过 Secret 配置。
+前端资源输出到 `dist/client/`，Worker 及部署配置输出到 `dist/prometheus_studio_v3/`。此方式需要 `ASSETS` 绑定，供 Wrangler 部署前端资源。当前部署账号为 `luohen2026`，Worker 为 `prometheus-studio-v3`，默认入口为 `https://prometheus-studio-v3.luohen2026.workers.dev`。此账号接回原有 STORAGE；管理密码、路径和 UUID 通过 Secret 配置。
 
 部署到自己的 Cloudflare 账户前，修改 `wrangler.jsonc` 中的 Worker 名称、账户 ID 和 KV 命名空间 ID，并配置目标 Worker 的 GO_ON、BASE_PATH 等运行时参数。本地 `.dev.vars` 不会自动成为生产 Secrets。
 
@@ -156,7 +158,6 @@ shared/     公共类型
 build/      混淆、资源收集、加密及单文件构建脚本
 test/       行为测试与实际构建产物测试
 docs/       功能矩阵、设计和历史验证记录
-reference/  独立参考仓库，不参与构建
 ```
 
-开发约定见 [AGENTS.md](AGENTS.md)。迁移基线为 cmliu/edgetunnel `a8ab111`，保留 GPL v2 许可与上游算法归属，见 [LICENSE](LICENSE) 和 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
+开发约定见 [AGENTS.md](AGENTS.md)。许可证与贡献者版权说明见 [LICENSE](LICENSE) 和 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。

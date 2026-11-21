@@ -1,4 +1,4 @@
-// Derived from cmliu/edgetunnel a8ab111. GPL-2.0; see THIRD_PARTY_NOTICES.md.
+// GPL-2.0; contributor copyrights: see THIRD_PARTY_NOTICES.md.
 export const initializers = [
   (runtime) => {
 runtime.worker = {
@@ -56,7 +56,7 @@ runtime.worker = {
                     目标前8总和 += 目标码 <= 57 ? 目标码 - 48 : 目标码 - 87;
                 }
                 if (请求前8总和 === 目标前8总和 && 请求UUID.slice(-12) === 目标UUID.slice(-12))
-                    return new Response(JSON.stringify({ Version: runtime.EDT_版本号 }), { status: 200, headers: { 'Content-Type': 'application/json;charset=utf-8' } });
+                    return new Response(JSON.stringify({ Version: runtime.protocolVersion }), { status: 200, headers: { 'Content-Type': 'application/json;charset=utf-8' } });
             }
         }
         else if (管理员密码 && upgradeHeader === 'websocket') {
@@ -287,7 +287,7 @@ runtime.worker = {
                     return 响应;
                 }
                 else if (访问路径 === 'sub') {
-                    const 订阅TOKEN = await runtime.hashIdentity(host + userID), 作为优选订阅生成器 = ['1', 'true'].includes(env.BEST_SUB) && url.searchParams.get('host') === 'example.com' && url.searchParams.get('uuid') === '00000000-0000-4000-8000-000000000000' && UA.toLowerCase().includes('tunnel (https://github.com/' + runtime.特征码字典[1] + '/edge');
+                    const 订阅TOKEN = await runtime.hashIdentity(host + userID), 作为优选订阅生成器 = ['1', 'true'].includes(env.BEST_SUB) && url.searchParams.get('host') === 'example.com' && url.searchParams.get('uuid') === '00000000-0000-4000-8000-000000000000' && runtime.isGeneratorClient(UA);
                     const 请求TOKEN = url.searchParams.get('token');
                     const 用户客户端请求订阅 = 请求TOKEN === 订阅TOKEN;
                     const 当前日序号 = Math.floor(Date.now() / 86400000);
@@ -385,9 +385,13 @@ runtime.worker = {
                             }
                             else {
                                 let 优选订阅生成器HOST = url.searchParams.get('sub') || runtime.config_JSON.优选订阅生成.SUB;
-                                const [优选生成器IP数组, 优选生成器其他节点] = await runtime.fetchSubscriptionSource(优选订阅生成器HOST, 本机标识头);
-                                完整优选IP = 完整优选IP.concat(优选生成器IP数组);
-                                其他节点LINK += 优选生成器其他节点;
+                                try {
+                                    const [优选生成器IP数组, 优选生成器其他节点] = await runtime.fetchSubscriptionSource(优选订阅生成器HOST, 本机标识头, true);
+                                    完整优选IP = 完整优选IP.concat(优选生成器IP数组);
+                                    其他节点LINK += 优选生成器其他节点;
+                                } catch {
+                                    return new Response('订阅生成器不可用或不兼容 Prometheus 请求。请更换生成器，或改用自定义地址。', { status: 503, headers: { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' } });
+                                }
                             }
                             const ECHLINK参数 = runtime.config_JSON.ECH ? `&ech=${encodeURIComponent((runtime.config_JSON.ECHConfig.SNI ? runtime.config_JSON.ECHConfig.SNI + '+' : '') + runtime.config_JSON.ECHConfig.DNS)}` : '';
                             const isLoonOrSurge = ua.includes('loon') || ua.includes('surge');
@@ -445,7 +449,7 @@ runtime.worker = {
                         else {
                             const 订阅转换URL = `${runtime.config_JSON.订阅转换配置.SUBAPI}/sub?target=${订阅类型}&url=${encodeURIComponent(url.protocol + '//' + url.host + '/sub?target=mixed&token=' + 今日订阅转换后端专属TOKEN + '&cnIspCode=' + runtime.识别运营商(request) + (url.searchParams.has('sub') && url.searchParams.get('sub') != '' ? `&sub=${url.searchParams.get('sub')}` : ''))}&config=${encodeURIComponent(runtime.config_JSON.订阅转换配置.SUBCONFIG)}&emoji=${runtime.config_JSON.订阅转换配置.SUBEMOJI}&list=${runtime.config_JSON.订阅转换配置.SUBLIST}&scv=${runtime.config_JSON.跳过证书验证}&xudp=${runtime.config_JSON.订阅转换配置.XUDP}&udp=${runtime.config_JSON.订阅转换配置.UDP}&tls13=${runtime.config_JSON.订阅转换配置.TLS13}&append_type=${runtime.config_JSON.订阅转换配置.APPEND_TYPE}&sort=${runtime.config_JSON.订阅转换配置.SORT}&expand=${runtime.config_JSON.订阅转换配置.EXPAND}`;
                             try {
-                                const response = await fetch(订阅转换URL, { headers: { 'User-Agent': 'Subconverter for ' + 订阅类型 + ' edge' + 'tunnel (https://github.com/' + runtime.特征码字典[1] + '/edge' + 'tunnel) Uid/0x' + 本机标识头 + ' Version/' + runtime.EDT_版本号 } });
+                                const response = await fetch(订阅转换URL, { headers: { 'User-Agent': 'Subconverter for ' + 订阅类型 + ' Prometheus (https://github.com/alanyangcn/prometheus) Uid/0x' + 本机标识头 + ' Version/' + runtime.protocolVersion } });
                                 if (response.ok) {
                                     订阅内容 = await response.text();
                                     if (url.searchParams.has('surge') || ua.includes('surge'))
