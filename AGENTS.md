@@ -27,7 +27,8 @@
 ## 验证与交付
 
 - 用户已授权：每轮修改完成并通过验证后，直接提交、推送并部署。部署使用已提交源码；不夹带无关本地修改。
-- 当前默认生产部署账号为 `luohen02`，Worker 为 `prometheus-studio`，使用该账号独立的 `STORAGE` 绑定。
+- 用户要求：Worker 出现 1101 后，下一次部署必须使用未占用的新名称创建 Worker，不覆盖该报错实例。
+- 当前默认生产部署账号为 `luohen02`，Worker 为 `prometheus-studio-v2`，使用该账号独立的 `STORAGE` 绑定。
 
 - 代码变更运行 `pnpm test`、`pnpm run build`、`pnpm exec wrangler deploy --dry-run`；单文件或混淆变更额外运行 `pnpm run test:single`。纯文档修改检查差异即可。
 - 协议、配置和鉴权覆盖失败与边界；日志覆盖去重、重复保存、OFF_LOG 和脱敏；Toast 覆盖顺序、持续时间及重复错误。
