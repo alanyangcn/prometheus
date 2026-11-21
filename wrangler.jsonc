@@ -21,5 +21,12 @@
     }
   ],
   "workers_dev": true,
-  "preview_urls": false
+  "preview_urls": false,
+  "routes": [
+    {
+      "pattern": "dance.zmjh.tech",
+      "zone_name": "zmjh.tech",
+      "custom_domain": true
+    }
+  ]
 }

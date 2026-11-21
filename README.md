@@ -87,7 +87,7 @@ BASE_PATH 允许 1–64 个英文字母、数字、下划线或短横线，可�
 pnpm run build
 ```
 
-前端资源输出到 `dist/client/`，Worker 及部署配置输出到 `dist/prometheus_studio_v3/`。此方式需要 `ASSETS` 绑定，供 Wrangler 部署前端资源。当前部署账号为 `luohen2026`，Worker 为 `prometheus-studio-v3`，默认入口为 `https://prometheus-studio-v3.luohen2026.workers.dev`。此账号接回原有 STORAGE；管理密码、路径和 UUID 通过 Secret 配置。
+前端资源输出到 `dist/client/`，Worker 及部署配置输出到 `dist/prometheus_studio_v3/`。此方式需要 `ASSETS` 绑定，供 Wrangler 部署前端资源。当前部署账号为 `luohen2026`，Worker 为 `prometheus-studio-v3`，主入口为 `https://dance.zmjh.tech`，备用入口为 `https://prometheus-studio-v3.luohen2026.workers.dev`。此账号接回原有 STORAGE；管理密码、路径和 UUID 通过 Secret 配置。
 
 部署到自己的 Cloudflare 账户前，修改 `wrangler.jsonc` 中的 Worker 名称、账户 ID 和 KV 命名空间 ID，并配置目标 Worker 的 GO_ON、BASE_PATH 等运行时参数。本地 `.dev.vars` 不会自动成为生产 Secrets。
 
