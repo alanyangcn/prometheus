@@ -12,14 +12,6 @@ export function normalizeIP(data: Record<string, unknown>): IPDetails {
   const asn = Object.keys(object(data.asn)).length ? object(data.asn) : { asn: data.asn_num, org: data.asn_org, type: data.asn_type, abuser_score: data.asn_abuser_score };
   return { ...data, ip: String(data.ip || ''), location, company, asn } as IPDetails;
 }
-export function abuseScore(data: IPDetails): number | null {
-  const base = ((parseFloat(String(data.company.abuser_score)) || 0) + (parseFloat(String(data.asn.abuser_score)) || 0)) / 2 * 5;
-  const risk = ['is_crawler','is_proxy','is_vpn','is_tor','is_abuser'].filter(flag => data[flag] === true).length * .15;
-  const score = base + risk + (data.is_bogon === true ? 1 : 0);
-  return score === 0 ? null : score;
-}
-export function maskIP(ip: string): string { return ip.includes(':') ? ip.split(':').slice(0, 2).join(':') + ':****:****' : ip.replace(/\.\d+$/, '.*'); }
-
 export function locationMap(info: IPDetails): string | null {
   const latitude = info.location.latitude, longitude = info.location.longitude;
   if (typeof latitude !== 'number' || typeof longitude !== 'number' || !Number.isFinite(latitude) || !Number.isFinite(longitude) || latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) return null;

@@ -41,6 +41,7 @@ onMounted(() => { void loadNetwork(); });
 </script>
 <template>
   <div class="network-details">
+    <p v-if="networkError" class="error" role="alert">{{ networkError }} <button type="button" class="secondary" :disabled="networkBusy" @click="loadNetwork">重试</button></p>
     <section class="card request-panel" aria-labelledby="request-info-title" :aria-busy="networkBusy">
       <div class="details-heading"><div><span class="details-eyebrow">CONNECTION</span><h2 id="request-info-title">当前连接信息</h2><p>当前浏览器访问 Worker 时的网络信息</p></div><button type="button" class="secondary" :disabled="networkBusy" @click="loadNetwork">{{ networkBusy ? '读取中…' : '刷新信息' }}</button></div>
 
@@ -50,13 +51,12 @@ onMounted(() => { void loadNetwork(); });
       <div class="details-heading"><div><span class="details-eyebrow">LOOKUP</span><h2 id="ip-query-title">IP 信息查询</h2></div><button v-if="network?.connectingIP" type="button" class="secondary" :disabled="queryBusy" @click="query(String(network.connectingIP))">查询当前 IP</button></div>
       <form class="ip-query-form" @submit.prevent="query()"><label class="query-field" for="network-query-ip">IP 地址<input id="network-query-ip" v-model="ip" placeholder="输入 IPv4 或 IPv6 地址" autocomplete="off" :disabled="queryBusy" /></label><button :disabled="queryBusy || !ip.trim()">{{ queryBusy ? '查询中…' : '查询' }}</button></form>
 
+      <p v-if="queryError" class="error" role="alert">{{ queryError }}</p>
       <IPDetails v-if="ipInfo" :value="ipInfo" />
     </section>
   </div>
 </template>
 <style scoped>
-.network-details{display:grid;gap:24px}.network-details .card{margin:0}.details-heading{display:flex;align-items:center;justify-content:space-between;gap:20px;margin-bottom:24px}.details-heading h2{margin:5px 0 0!important}.details-heading p{margin:6px 0 0;color:#7b8ba4}.details-heading button{flex-shrink:0}.details-eyebrow{font-size:10px;font-weight:650;letter-spacing:.16em;color:#7b94b5}.connection-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:0}.connection-item{min-width:0;padding:18px;border:1px solid #ffffffa6;border-radius:18px;background:linear-gradient(135deg,#ffffff59,#ffffff26);box-shadow:inset 0 1px 1px #ffffff99}.connection-item dt{display:flex;align-items:center;gap:8px;font-size:11px;color:#7587a1}.connection-icon{display:grid;place-items:center;min-width:25px;height:25px;border-radius:8px;background:#7c9edc12;color:#7593bc;font-size:10px;font-weight:600}.connection-item dd{margin:12px 0 0;font-size:14px;font-weight:550;color:#3f5471;overflow-wrap:anywhere}.mono-value{font-family:ui-monospace,SFMono-Regular,monospace}.ip-query-form{display:flex;gap:12px;align-items:flex-end}.query-field{flex:1;min-width:0;margin:0!important}.query-field input{margin:9px 0 0!important}.ip-query-form button{flex-shrink:0;min-height:42px}.ip-panel :deep(.ip-details){margin-top:24px}
-:global(:root[data-theme=dark] .connection-item){border-color:#ffffff20;background:linear-gradient(135deg,#ffffff08,#ffffff03);box-shadow:inset 0 1px 1px #ffffff0a}:global(:root[data-theme=dark] .connection-item dd){color:#c4d3e9}:global(:root[data-theme=dark] .connection-item dt),:global(:root[data-theme=dark] .details-heading p){color:#a0b2cb}
-@media(max-width:600px){.connection-location,.connection-networkOwner{grid-column:1/-1}}
-@media(max-width:800px){.connection-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:480px){.details-heading{gap:12px;flex-wrap:wrap}.connection-grid{gap:10px}.connection-item{padding:14px}.connection-item dd{font-size:12px}.ip-query-form{flex-wrap:wrap}.ip-query-form button{width:100%}}
+.network-details { display:grid; gap:22px; }.details-heading { display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:24px; }.details-heading h2 { margin:6px 0 0; }.details-heading p { color:var(--muted); font-size:12px; margin:6px 0 0; }.details-eyebrow { color:var(--muted); font-size:10px; letter-spacing:.12em; }.connection-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:20px; margin:0; }.connection-item { min-width:0; border-top:1px solid var(--edge); padding-top:16px; }.connection-icon { display:none; }.connection-item dd { margin:10px 0 0; font-size:14px; }.mono-value { font-family:ui-monospace,monospace; }.ip-query-form { display:flex; align-items:flex-end; gap:12px; }.query-field { flex:1; min-width:0; margin:0; }.query-field input { margin:9px 0 0; }.ip-panel :deep(.ip-details) { margin-top:24px; }.ip-query-form button { flex-shrink:0; min-height:44px; }
+@media(max-width:600px) { .connection-grid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:18px 14px; }.details-heading { flex-wrap:wrap; }.ip-query-form { flex-wrap:wrap; }.ip-query-form button { width:100%; } }
 </style>

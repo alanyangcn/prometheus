@@ -1,74 +1,58 @@
 <script setup lang="ts">
-import { useToastMessage } from '../composables/useToast';
-import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue';
-import { attachLiquidGlass } from '../features/appearance/liquidGlass';
+import { computed, onMounted, ref } from 'vue';
 import { useConfigStore } from '../stores/config';
 import ShareLink from '../components/ShareLink.vue';
+import PageState from '../components/PageState.vue';
 import SubscriptionTokenHelp from '../components/SubscriptionTokenHelp.vue';
 import { subscriptionLinks } from '../features/sharing/links';
-import type { Configuration } from '../../shared/config';
-const store = useConfigStore(); const error = useToastMessage('error');
-const loading = ref(true);
-const subscriptionsGlass = ref<HTMLElement | null>(null);
-const cleanups: (() => void)[] = [];
-let active = true;
-onMounted(async () => {
-  try { await store.load(); }
-  catch (e) { error.value = e instanceof Error ? e.message : '加载失败'; }
+const store = useConfigStore(), loading = ref(true), error = ref('');
+async function load() {
+  loading.value = true; error.value = '';
+  try { await store.load(); } catch (cause) { error.value = cause instanceof Error ? cause.message : '读取配置失败'; }
   finally { loading.value = false; }
-  await nextTick();
-  if (active) for (const element of [subscriptionsGlass.value]) if (element) cleanups.push(attachLiquidGlass(element));
+}
+onMounted(load);
+const links = computed(() => {
+  const generation = store.data?.优选订阅生成;
+  const sub = generation && typeof generation === 'object' && !Array.isArray(generation) ? generation : {};
+  return sub.TOKEN ? subscriptionLinks(location.origin, String(sub.TOKEN), String(sub.SUBNAME || store.data?.HOST || location.hostname)) : [];
 });
-onUnmounted(() => { active = false; cleanups.forEach(cleanup => cleanup()); });
-const generation = computed(() => store.data?.优选订阅生成 as Configuration | undefined);
-const token = computed(() => String(generation.value?.TOKEN || ''));
-const links = computed(() => subscriptionLinks(window.location.origin, token.value, String(generation.value?.SUBNAME || store.data?.HOST || window.location.hostname)));
+const commonLinks = computed(() => links.value.filter(link => ['auto', 'clash', 'sb'].includes(link.id)));
+const otherLinks = computed(() => links.value.filter(link => !['auto', 'clash', 'sb'].includes(link.id)));
+const summary = computed(() => [
+  { label: '节点域名', value: String(store.data?.HOST || '未设置') },
+  { label: '协议 / 传输', value: `${String(store.data?.协议类型 || '—').toUpperCase()} / ${String(store.data?.传输协议 || '—').toUpperCase()}` },
+  { label: 'ECH', value: store.data?.ECH ? '已启用' : '未启用' },
+]);
 </script>
 <template>
-  <section class="illumination-overview" aria-labelledby="overview-title">
-    <div class="overview-heading"><h1 id="overview-title" class="page-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/></svg><span>概览</span></h1></div>
-
-    <div v-if="loading" class="overview-loading" role="status">正在读取你的工作空间…</div>
-    <div v-else-if="store.data" class="overview-grid">
-      <section ref="subscriptionsGlass" class="overview-glass subscriptions-panel">
-        <div class="panel-heading"><span class="panel-symbol" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="m10 13 4-4m-6 6-2 2a4 4 0 0 1-6-6l4-4a4 4 0 0 1 6 0m2 2 2-2a4 4 0 0 1 6 6l-4 4a4 4 0 0 1-6 0" transform="translate(2 0)" /></svg></span><div><h2>节点与订阅</h2><p>点击链接，即可复制</p></div></div>
-        <div class="subscription-links">
-        <ShareLink copy-button label="节点链接" :url="String(store.data.LINK || '')" :import-url="String(store.data.LINK || '')" />
-        <ShareLink copy-button v-for="link in links" :key="link.id" :label="link.label" :url="link.url" :import-url="link.importUrl" :filename="link.filename"><template v-if="link.id === 'auto'" #label-action><SubscriptionTokenHelp /></template></ShareLink>
-        </div>
+  <section class="management-page">
+    <div class="dashboard-heading"><div><h1 class="page-title">概览</h1><p class="page-description">获取订阅，或继续调整你的节点。</p></div><RouterLink class="button secondary" to="/illumination/settings">配置节点 <span aria-hidden="true">↗</span></RouterLink></div>
+    <PageState :loading="loading" :error="error" @retry="load" />
+    <template v-if="!loading && !error && store.data">
+      <dl class="node-summary"><div v-for="item in summary" :key="item.label"><dt>{{ item.label }}</dt><dd>{{ item.value }}</dd></div></dl>
+      <section class="card subscriptions-panel" aria-labelledby="subscriptions-title">
+        <div class="section-heading"><h2 id="subscriptions-title">订阅与导入</h2><p>复制链接或扫描二维码，在客户端添加订阅。链接包含访问凭据，请妥善保管。</p></div>
+        <div class="subscription-links"><ShareLink v-for="link in commonLinks" :key="link.id" copy-button :label="link.label" :url="link.url" :import-url="link.importUrl" :filename="link.filename"><template v-if="link.id === 'auto'" #label-action><SubscriptionTokenHelp /></template></ShareLink></div>
+        <p v-if="!links.length" class="error" role="alert">未读取到订阅凭据，请重新加载配置。</p>
+        <details><summary>其他客户端与单节点链接</summary><div class="subscription-links"><ShareLink copy-button label="单节点链接" :url="String(store.data.LINK || '')" :import-url="String(store.data.LINK || '')" /><ShareLink v-for="link in otherLinks" :key="link.id" copy-button :label="link.label" :url="link.url" :import-url="link.importUrl" :filename="link.filename" /></div></details>
+        <p class="hint subscription-note">Clash、Sing-box 等格式可能依赖订阅转换服务；遇到导入错误时，可检查转换后端。</p>
       </section>
-    </div>
+      <div class="dashboard-shortcuts"><RouterLink to="/illumination/subscription"><span class="shortcut-number">01</span><div><strong>选择订阅来源</strong><p>随机地址、自定义地址或已有生成器</p></div><span aria-hidden="true">→</span></RouterLink><RouterLink to="/illumination/cdn"><span class="shortcut-number">02</span><div><strong>设置上游代理</strong><p>PROXYIP 或自己的代理账号</p></div><span aria-hidden="true">→</span></RouterLink></div>
+    </template>
   </section>
 </template>
 <style scoped>
-.overview-heading { display: flex; align-items: center; justify-content: space-between; gap: 24px; margin: 8px 0 32px; }
-.overview-heading h1 { font-size: clamp(27px, 4vw, 39px); font-weight: 600; letter-spacing: -1.3px; margin: 0; }
-.overview-grid { display: grid; grid-template-columns: minmax(0, 1fr); align-items: start; gap: 24px; }
-.overview-glass { --glass-filter: blur(18px) saturate(1.35); position: relative; isolation: isolate; min-width: 0; padding: 28px; border: 1px solid #ffffffb3; border-radius: 28px; box-shadow: 0 14px 50px #45608a0c, 0 3px 12px #45608a06; }
-.overview-glass::before { content: ''; position: absolute; inset: 0; z-index: -2; border-radius: inherit; background: linear-gradient(140deg,#ffffff85,#ffffff40 60%,#ffffff66); -webkit-backdrop-filter: var(--glass-filter); backdrop-filter: var(--glass-filter); box-shadow: inset 0 1px 2px #ffffffe0, inset 1px 0 2px #ffffff80, inset 0 -1px 2px #ffffff70; }
-.overview-glass::after { content: ''; position: absolute; inset: 0; z-index: -1; border-radius: inherit; padding: 1px; pointer-events: none; background: linear-gradient(130deg,#fff,#ffffff10 30%,#a0bbdf40 55%,#ffffffbb 80%,#ffffff20); -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0); -webkit-mask-composite: xor; mask-composite: exclude; }
-.panel-heading { display: flex; align-items: center; gap: 12px; margin-bottom: 26px; }
-.panel-symbol { width: 40px; height: 40px; flex-shrink: 0; display: grid; place-items: center; border-radius: 14px; background: #ffffff60; border: 1px solid #ffffffb3; color: #7994bc; box-shadow: inset 0 1px 2px #ffffffcc; }
-.panel-symbol svg { width: 21px; height: 21px; }
-.panel-heading h2 { font-size: 16px; font-weight: 600; margin: 0 0 5px; letter-spacing: -.3px; }
-.panel-heading p { font-size: 11px; margin: 0; color: #8290a5; }
-.subscription-links { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 24px; }
-.subscriptions-panel :deep(.field) { margin: 0; padding: 20px 0; border-top: 1px solid #8295b214; }
-.subscriptions-panel :deep(label) { font-size: 12px; color: #647792; font-weight: 550; margin-bottom: 10px; }
-.subscriptions-panel :deep(input) { background: #ffffff40; border: 1px solid #ffffffa6; border-radius: 12px; font-size: 12px; padding: 11px 12px; margin-bottom: 0; color: #667b98; text-overflow: ellipsis; }
-.subscriptions-panel :deep(.actions) { align-items: center; gap: 8px; margin-top: 10px; }
-.subscriptions-panel :deep(button) { font-size: 11px; padding: 8px 12px; border-radius: 10px; }
-.subscriptions-panel :deep(.actions a) { font-size: 11px; padding: 6px 4px; }
-.subscriptions-panel :deep(.token-help-button) { width: 22px; height: 22px; min-height: 22px; padding: 0; border-radius: 50%; font-size: 12px; }
-.subscriptions-panel :deep(img) { max-width: 100%; height: auto; border-radius: 16px; margin-top: 16px; }
-.overview-loading { padding: 48px 24px; text-align: center; color: #8290a5; font-size: 13px; }
-:global(:root[data-theme=dark] .overview-glass) { border-color: #ffffff26; box-shadow: 0 14px 50px #0000001a; }
-:global(:root[data-theme=dark] .overview-glass::before) { background: linear-gradient(140deg,#24374a9e,#18253688 60%,#2731498f); box-shadow: inset 0 1px 2px #ffffff26, inset 0 -1px 2px #ffffff1a; }
-:global(:root[data-theme=dark] .overview-glass::after) { opacity: .35; }
-:global(:root[data-theme=dark] .panel-symbol)  { background: #ffffff08; border-color: #ffffff20; box-shadow: none; }
-:global(:root[data-theme=dark] .subscriptions-panel input) { background: #101c3033; border-color: #ffffff20; color: #a9bbd6; }
-:global(:root[data-theme=dark] .subscriptions-panel label) { color: #a0b2cb; }
-@media (max-width: 800px) { .overview-grid, .subscription-links { grid-template-columns: 1fr; } }
-@media (max-width: 600px) { .overview-heading { display: block; margin-bottom: 24px; } .overview-glass { padding: 22px; border-radius: 24px; } }
-@media (prefers-reduced-transparency: reduce) { .overview-glass::before { -webkit-backdrop-filter: none; backdrop-filter: none; background: #f1f5fc; } :global(:root[data-theme=dark] .overview-glass::before) { background: #1c2b3c; } }
+.dashboard-heading { display:flex; align-items:flex-start; justify-content:space-between; gap:20px; }
+.dashboard-heading .button { margin-top:3px; }
+.node-summary { display:grid; grid-template-columns:1.5fr 1fr .7fr; gap:0; margin:0 0 24px; padding:22px 24px; border:1px solid var(--edge); border-radius:14px; background:var(--surface); }
+.node-summary > div { min-width:0; padding:0 24px; border-right:1px solid var(--edge); }.node-summary > div:first-child { padding-left:0; }.node-summary > div:last-child { border-right:0; }.node-summary dt { font-size:11px; }.node-summary dd { margin:9px 0 0; font-weight:600; font-size:14px; }
+.subscription-links { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:20px 28px; }
+.subscription-links :deep(.field) { margin:0; padding:18px 0 0; border-top:1px solid var(--edge); }
+.subscription-links :deep(input) { font-family:ui-monospace,monospace; font-size:12px; }
+.subscription-links :deep(.actions) { margin-top:10px; gap:12px; font-size:12px; }.subscription-links :deep(.actions button) { min-height:34px; padding:7px 10px; font-size:12px; }
+.subscription-note { margin-bottom:0; margin-top:24px; }
+.dashboard-shortcuts { display:grid; grid-template-columns:1fr 1fr; gap:18px; margin-top:22px; }.dashboard-shortcuts a { display:flex; align-items:center; gap:14px; padding:22px; border:1px solid var(--edge); border-radius:14px; color:var(--ink); background:var(--surface); }.dashboard-shortcuts a:hover { border-color:var(--accent); text-decoration:none; }.dashboard-shortcuts strong { font-size:13px; }.dashboard-shortcuts p { font-size:11px; color:var(--muted); margin:5px 0 0; }.dashboard-shortcuts a > span:last-child { margin-left:auto; color:var(--muted); }.shortcut-number { font-size:11px; color:var(--accent); align-self:flex-start; padding-top:2px; }
+@media(max-width:1100px) { .dashboard-shortcuts { grid-template-columns:1fr; } }
+@media(max-width:600px) { .subscription-links { grid-template-columns:1fr; gap:18px; }.dashboard-heading .button { font-size:11px; padding:8px 10px; }.node-summary { padding:18px; grid-template-columns:1fr 1fr; gap:18px; }.node-summary > div { padding:0; border:0; }.node-summary > div:first-child { grid-column:1/-1; border-bottom:1px solid var(--edge); padding-bottom:16px; } }
 </style>

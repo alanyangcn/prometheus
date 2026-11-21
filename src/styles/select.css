@@ -105,3 +105,6 @@
   .glass-select-options { background: #f3f6fb; backdrop-filter: none; -webkit-backdrop-filter: none; }
   :root[data-theme=dark] .glass-select-options { background: #202a3c; }
 }
+
+/* Management fields use the same edge and surface tokens as text inputs. */
+:root .illumination-shell select { --select-surface:var(--surface); --select-edge:var(--edge); --select-ink:var(--ink); border-radius:10px; box-shadow:0 1px 2px #17243f05; }

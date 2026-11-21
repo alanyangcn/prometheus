@@ -10,7 +10,7 @@ test('obfuscated browser imports retain literal paths for Vite CSS preloads', as
   }
   const management = files.find(file => /^management-.*\.js$/.test(file));
   const code = await readFile(new URL(management, directory), 'utf8');
-  for (const page of ['LoginView', 'SettingsView', 'ConversionView', 'DashboardView', 'NetworkView', 'SubscriptionView', 'EchView', 'CdnView', 'LogsView']) {
+  for (const page of ['LoginView', 'SettingsView', 'ConversionView', 'DashboardView', 'NetworkView', 'SubscriptionView', 'CdnView', 'LogsView']) {
     assert.match(code, new RegExp('assets/' + page + '-[^"\\s]+\\.css'), page + ': missing CSS preload dependency');
   }
 });

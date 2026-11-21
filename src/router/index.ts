@@ -12,7 +12,7 @@ const router = createRouter({
     { path: '/illumination/subscription', component: () => import('../views/SubscriptionView.vue'), meta: { authenticated: true } },
     { path: '/illumination/conversion', component: () => import('../views/ConversionView.vue'), meta: { authenticated: true } },
     { path: '/illumination/cdn', component: () => import('../views/CdnView.vue'), meta: { authenticated: true } },
-    { path: '/illumination/ech', component: () => import('../views/EchView.vue'), meta: { authenticated: true } },
+    { path: '/illumination/ech', redirect: '/illumination/settings' },
     { path: '/illumination/logs', component: () => import('../views/LogsView.vue'), meta: { authenticated: true } },
     { path: '/:pathMatch(.*)*', redirect: '/spark' },
   ],

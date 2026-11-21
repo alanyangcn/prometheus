@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import PageState from '../components/PageState.vue';
+import UnsavedChanges from '../components/UnsavedChanges.vue';
 import { useToastMessage, showToast } from '../composables/useToast';
 import { vGlassDialog } from '../features/appearance/glassDialog';
 import { computed, onMounted, onBeforeUnmount, ref } from 'vue';
@@ -8,6 +10,7 @@ import { snapshot } from '../stores/snapshot';
 import { group } from '../features/configuration/settings';
 import { converterKey } from '../features/tools/converter';
 import { api } from '../api/client';
+const loading = ref(true), loadError = ref('');
 const store = useConfigStore(), draft = ref<Configuration | null>(null);
 const conversion = computed(() => draft.value ? group(draft.value,'订阅转换配置') : {} as Configuration);
 const error = useToastMessage('error'), message = useToastMessage('success'), busy = ref(false), presetsError = ref('');
@@ -19,7 +22,9 @@ const canConfirm = computed(() => Boolean(verifiedKey.value && verifiedKey.value
 const flags = [['SUBEMOJI','Emoji','在节点名称中显示 Emoji 旗帜'],['SUBLIST','仅输出节点信息','不附加规则和策略组'],['UDP','UDP','传递 UDP 转换参数'],['XUDP','XUDP','传递 XUDP 转换参数'],['TLS13','TLS 1.3','传递 TLS 1.3 转换参数']];
 function syncPreset() { const value = String(conversion.value.SUBCONFIG || ''); presetChoice.value = presets.value.some(group => group.options.some(option => option.value === value)) ? value : 'custom'; }
 async function loadPresets() { presetsError.value = ''; try {presets.value = await api('/api/tools/converter-presets',{}); syncPreset();} catch (cause) {presetsError.value = cause instanceof Error ? cause.message : '预设读取失败';} }
-onMounted(async () => {try {draft.value = snapshot(await store.load()); await loadPresets();} catch (cause) {error.value = cause instanceof Error ? cause.message : '加载失败';}});
+const changed = computed(() => !!draft.value && JSON.stringify(draft.value.订阅转换配置) !== JSON.stringify(store.data?.订阅转换配置));
+async function load() { loading.value = true; loadError.value = ''; try { draft.value = snapshot(await store.load()); } catch (cause) { loadError.value = cause instanceof Error ? cause.message : '加载失败'; } finally { loading.value = false; } }
+onMounted(load);
 onBeforeUnmount(() => dialog.value?.close());
 function choosePreset() { if (presetChoice.value !== 'custom') conversion.value.SUBCONFIG = presetChoice.value; }
 function cancel() {if (store.data) draft.value = snapshot(store.data); syncPreset(); error.value = ''; message.value = '已取消未保存的修改';}
@@ -27,15 +32,18 @@ async function openBackend() {backend.value = String(conversion.value.SUBAPI || 
 function chooseService() {if (serviceChoice.value !== 'custom') backend.value = serviceChoice.value; verifiedKey.value = '';}
 async function verifyBackend() {modalBusy.value = true; modalError.value = ''; verifiedKey.value = ''; try { const key = currentKey.value; const result = await api<{baseURL:string;version:string}>('/api/tools/converter-check',{baseURL:backend.value,config:conversion.value.SUBCONFIG}); if (key !== currentKey.value) throw new Error('地址或配置已变化，请重新验证'); verifiedBase.value = result.baseURL; verifiedKey.value = key; version.value = result.version; showToast('订阅转换后端验证成功');} catch (cause) {modalError.value = cause instanceof Error ? cause.message : '验证失败';} finally {modalBusy.value = false;} }
 function confirmBackend() {if (!canConfirm.value) return; conversion.value.SUBAPI = verifiedBase.value; dialog.value?.close(); message.value = '已填入验证后的转换后端，请保存配置';}
-async function save() {if (!draft.value || busy.value) return; error.value = ''; message.value = ''; busy.value = true; try { const patch = snapshot(conversion.value); const checked = await api<{baseURL:string}>('/api/tools/converter-check',{baseURL:patch.SUBAPI,config:patch.SUBCONFIG}); patch.SUBAPI = checked.baseURL; await store.save({订阅转换配置:patch}); draft.value = snapshot(store.data!); syncPreset(); message.value = '订阅转换配置已保存';} catch (cause) {error.value = cause instanceof Error ? cause.message : '保存失败';} finally {busy.value = false;} }
+async function save() {if (!draft.value || !changed.value || busy.value) return; error.value = ''; message.value = ''; busy.value = true; try { const patch = snapshot(conversion.value); const checked = await api<{baseURL:string}>('/api/tools/converter-check',{baseURL:patch.SUBAPI,config:patch.SUBCONFIG}); patch.SUBAPI = checked.baseURL; await store.save({订阅转换配置:patch}); draft.value = snapshot(store.data!); syncPreset(); message.value = '订阅转换配置已保存';} catch (cause) {error.value = cause instanceof Error ? cause.message : '保存失败';} finally {busy.value = false;} }
 </script>
 <template>
-<section class="management-page"><h1 class="page-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><path d="M4 8h15m-4-4 4 4-4 4M20 16H5m4-4-4 4 4 4"/></svg><span>订阅转换配置</span></h1>
-<form v-if="draft" class="card" @submit.prevent="save"><fieldset :disabled="busy" class="conversion-fields">
+<section class="management-page"><h1 class="page-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><path d="M4 8h15m-4-4 4 4-4 4M20 16H5m4-4-4 4 4 4"/></svg><span>订阅转换</span></h1>
+<p class="page-description">为 Clash、Sing-box 等客户端配置转换后端与规则。</p>
+<PageState :loading="loading" :error="loadError" @retry="load" />
+<UnsavedChanges :changed="changed" :busy="busy" />
+<form v-if="draft && !loading && !loadError" class="card" @submit.prevent="save"><fieldset :disabled="busy" class="conversion-fields">
 <div class="conversion-row"><label for="conversion-backend">订阅转换后端</label><input id="conversion-backend" :value="conversion.SUBAPI" readonly placeholder="https://SUBAPI.cmliussss.net" title="点击验证和设置后端" @click="openBackend" @keydown.enter.prevent="openBackend" /></div>
-<div class="conversion-row"><label for="conversion-preset">订阅转换配置文件</label><div><select v-glass-select id="conversion-preset" v-model="presetChoice" @change="choosePreset"><option value="custom">自定义</option><optgroup v-for="preset in presets" :key="preset.label" :label="preset.label"><option v-for="option in preset.options" :key="option.value" :value="option.value">{{ option.label }}</option></optgroup></select><input v-if="presetChoice === 'custom'" v-model="conversion.SUBCONFIG" aria-label="自定义订阅转换配置文件 URL" placeholder="https://raw.githubusercontent.com/…" required /><p v-if="presetsError" class="error">{{ presetsError }} <button type="button" class="secondary" @click="loadPresets">重新读取</button></p></div></div>
+<div class="conversion-row"><label for="conversion-preset">订阅转换配置文件</label><div><select v-glass-select id="conversion-preset" v-model="presetChoice" @change="choosePreset"><option value="custom">自定义</option><optgroup v-for="preset in presets" :key="preset.label" :label="preset.label"><option v-for="option in preset.options" :key="option.value" :value="option.value">{{ option.label }}</option></optgroup></select><input v-if="presetChoice === 'custom'" v-model="conversion.SUBCONFIG" aria-label="自定义订阅转换配置文件 URL" placeholder="https://raw.githubusercontent.com/…" required /><button type="button" class="secondary" @click="loadPresets">读取规则预设</button><p v-if="presetsError" class="error">{{ presetsError }} <button type="button" class="secondary" @click="loadPresets">重新读取</button></p></div></div>
 <div class="conversion-flags"><template v-for="[key,label,description] in flags" :key="key"><label v-if="conversion[key] !== undefined" :title="description"><input v-model="conversion[key]" type="checkbox" />{{ label }}</label></template></div>
-</fieldset><div class="conversion-footer actions"><button type="button" class="secondary" :disabled="busy" @click="cancel">取消</button><button :disabled="busy">{{ busy ? '验证并保存中…' : '保存' }}</button></div></form>
+</fieldset><div class="form-footer"><span class="form-status" :class="{ dirty: changed }">{{ changed ? '有未保存的修改' : '配置已同步' }}</span><div class="actions"><button type="button" class="secondary" :disabled="busy || !changed" @click="cancel">取消</button><button :disabled="busy || !changed">{{ busy ? '验证并保存中…' : '保存' }}</button></div></div></form>
 <Teleport to="body"><dialog ref="dialog" v-glass-dialog class="conversion-dialog glass-dialog" aria-labelledby="backend-title" @cancel="event => {if (modalBusy) event.preventDefault();}"><h2 id="backend-title">订阅转换后端</h2><label for="backend-service">订阅转换后端</label><select v-glass-select id="backend-service" v-model="serviceChoice" :disabled="modalBusy" @change="chooseService"><option value="custom">自定义</option><option v-for="service in services" :key="service.value" :value="service.value">{{ service.label }} · {{ service.value }}</option></select><template v-if="serviceChoice === 'custom'"><label for="backend-custom">自定义后端地址</label><input id="backend-custom" v-model="backend" :disabled="modalBusy" placeholder="输入订阅转换后端地址" /></template><p v-if="version" role="status">{{ version }}</p><div class="actions"><button type="button" :disabled="modalBusy || !backend.trim()" @click="verifyBackend">{{ modalBusy ? '验证中…' : '可用性验证' }}</button><button type="button" :disabled="modalBusy || !canConfirm" @click="confirmBackend">确定</button><button type="button" class="secondary" :disabled="modalBusy" @click="dialog?.close()">取消</button></div></dialog></Teleport>
 </section>
 </template>

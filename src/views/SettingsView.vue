@@ -1,18 +1,22 @@
 <script setup lang="ts">
+import PageState from '../components/PageState.vue';
+import UnsavedChanges from '../components/UnsavedChanges.vue';
 import { useToastMessage } from '../composables/useToast';
 import { vGlassDialog } from '../features/appearance/glassDialog';
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useConfigStore } from '../stores/config';
 import type { Configuration } from '../../shared/config';
 import { snapshot } from '../stores/snapshot';
-import { prepareSettings, echConflict, resolveEchConflict, group, applyProtocolInteractions, hostsMismatch } from '../features/configuration/settings';
+import { echConflict, resolveEchConflict, group, applyProtocolInteractions, hostsMismatch } from '../features/configuration/settings';
+import EchConfiguration from '../components/EchConfiguration.vue';
+import { nodeSettings, prepareNodeSettings } from '../features/configuration/node';
+const loading = ref(true), loadError = ref('');
 const store = useConfigStore();
 const draft = ref<Configuration | null>(null), original = ref<Configuration | null>(null);
 const message = useToastMessage('success'), error = useToastMessage('error'), busy = ref(false);
 const dialog = ref<HTMLDialogElement | null>(null), dialogKind = ref<'hosts' | 'uuid' | 'alpn' | 'tls'>('uuid');
 const hostText = ref(''), dialogError = useToastMessage('error'), pendingALPN = ref('');
 const hostname = location.hostname;
-const nodeKeys = ['PATH', 'HOSTS', '协议类型', '传输协议', 'SS', 'Fingerprint', 'gRPC模式', 'gRPCUserAgent', '跳过证书验证', 'ALPN', '随机路径', '启用0RTT', 'TLS分片'];
 const fingerprints = ['chrome', 'firefox', 'safari', 'ios', 'android', 'edge', '360', 'qq', 'random', 'randomized'];
 const alpns = ['', 'h3', 'h2', 'http/1.1', 'h3,h2', 'h2,http/1.1', 'h3,h2,http/1.1'];
 const has = (key: string) => draft.value?.[key] !== undefined;
@@ -21,17 +25,11 @@ const noTLS = computed(() => ss.value && group(draft.value!, 'SS').TLS === false
 const grpc = computed(() => draft.value?.传输协议 === 'grpc');
 const hosts = computed(() => Array.isArray(draft.value?.HOSTS) ? draft.value!.HOSTS as string[] : null);
 const conflict = computed(() => !!draft.value && echConflict(draft.value));
-function editable(config: Configuration): Configuration {
-  const result: Configuration = {};
-  for (const key of nodeKeys) if (config[key] !== undefined) result[key] = config[key];
-  result.SUBNAME = group(config, '优选订阅生成').SUBNAME;
-  result.ECH = config.ECH ?? false;
-  return result;
-}
-const changed = computed(() => !!draft.value && !!original.value && JSON.stringify(editable(draft.value)) !== JSON.stringify(editable(original.value)));
+const changed = computed(() => !!draft.value && !!original.value && JSON.stringify(nodeSettings(draft.value)) !== JSON.stringify(nodeSettings(original.value)));
 watch(() => [draft.value?.协议类型, draft.value?.传输协议, draft.value?.SS], () => { if (draft.value) applyProtocolInteractions(draft.value); }, { deep: true });
 function reset(value: Configuration) { original.value = snapshot(value); draft.value = snapshot(value); }
-onMounted(async () => { try { reset(await store.load()); } catch (cause) { error.value = cause instanceof Error ? cause.message : '加载失败'; } });
+async function load() { loading.value = true; loadError.value = ''; try { reset(await store.load()); } catch (cause) { loadError.value = cause instanceof Error ? cause.message : '加载失败'; } finally { loading.value = false; } }
+onMounted(load);
 onBeforeUnmount(() => dialog.value?.close());
 function cancel() { if (original.value) draft.value = snapshot(original.value); error.value = ''; message.value = '已取消未保存的修改'; }
 function fillUserAgent() { if (draft.value) draft.value.gRPCUserAgent = navigator.userAgent; }
@@ -64,12 +62,7 @@ async function save() {
   busy.value = true; error.value = ''; message.value = '';
   try {
     if (has('完整节点路径')) normalizePath();
-    const update: Configuration = {};
-    for (const key of nodeKeys) if (has(key)) update[key] = draft.value[key];
-    // ECH belongs to its own page; only persist explicit protocol/fingerprint interactions here.
-    if (draft.value.ECH !== original.value?.ECH) update.ECH = draft.value.ECH;
-    const prepared = prepareSettings(update, navigator.userAgent);
-    prepared.优选订阅生成 = { SUBNAME: group(draft.value, '优选订阅生成').SUBNAME };
+    const prepared = prepareNodeSettings(draft.value, navigator.userAgent);
     await store.save(prepared); reset(store.data!); message.value = '节点配置已保存';
   } catch (cause) { error.value = cause instanceof Error ? cause.message : '保存失败'; } finally { busy.value = false; }
 }
@@ -77,14 +70,19 @@ async function save() {
 <template>
   <section class="management-page">
     <h1 class="page-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 17h16"/><circle cx="9" cy="7" r="3"/><circle cx="15" cy="17" r="3"/></svg><span>节点配置</span></h1>
+<p class="page-description">配置节点身份、连接协议和 ECH，保存后在客户端更新订阅。</p>
 
-    <form v-if="draft" class="card node-form" @submit.prevent="save">
+    <PageState :loading="loading" :error="loadError" @retry="load" />
+<UnsavedChanges :changed="changed" :busy="busy" />
+<form v-if="draft && !loading && !loadError" class="card node-form" @submit.prevent="save">
       <fieldset :disabled="busy" class="node-fields">
+<section class="form-section"><div class="section-heading"><h2>基础信息</h2><p>设置订阅名称与客户端连接使用的域名。</p></div>
         <div class="field"><label for="subscription-name">订阅名称</label><input id="subscription-name" v-model="group(draft, '优选订阅生成').SUBNAME" /></div>
         <div class="field"><label for="node-host">节点域名</label><input id="node-host" :value="hosts ? hosts.join('、') : String(draft.HOST || '')" readonly :class="{ clickable: hosts }" :title="hosts ? '点击编辑多个节点域名' : '节点域名'" @click="hosts && open('hosts')" @keydown.enter.prevent="hosts && open('hosts')" /></div>
         <div class="field"><label for="node-uuid" class="label-help">UUID <button type="button" class="help-button secondary question-help-button" aria-label="查看 UUID 说明" @click="open('uuid')">?</button></label><input id="node-uuid" :value="String(draft.UUID || '')" readonly title="UUID 通过环境变量设置" /></div>
         <p v-if="hostsMismatch(draft, hostname)" class="hint" role="status">当前访问域名 {{ hostname }} 不在 HOSTS 列表中，请确认配置的节点域名可访问。</p>
         <div v-if="has('PATH')" class="field"><label for="node-path">PATH</label><input id="node-path" v-model="draft.PATH" :readonly="!has('完整节点路径')" :title="has('完整节点路径') ? '节点的伪装路径' : '通过 PATH 环境变量修改'" @change="normalizePath" /></div>
+</section><section class="form-section"><div class="section-heading"><h2>协议与传输</h2><p>更改后需要在客户端更新订阅。</p></div>
         <div class="node-grid">
           <div class="field"><label for="node-protocol">节点协议</label><select v-glass-select id="node-protocol" v-model="draft.协议类型"><option value="vless">VLESS</option><option value="trojan">Trojan</option><option v-if="has('SS')" value="ss">Shadowsocks</option></select></div>
           <template v-if="ss && has('SS')">
@@ -97,15 +95,19 @@ async function save() {
           <div v-if="has('ALPN')" class="field"><label for="node-alpn">ALPN</label><select v-glass-select id="node-alpn" :value="draft.ALPN || ''" @change="setALPN"><option v-for="value in alpns" :key="value" :value="value">{{ value || '客户端自动协商' }}</option></select></div>
         </div>
         <div v-if="grpc && has('gRPCUserAgent')" class="field"><label for="grpc-ua">gRPC UA</label><div class="ua-field"><input id="grpc-ua" v-model="draft.gRPCUserAgent" /><button type="button" class="secondary" @click="fillUserAgent">获取当前 UA</button></div></div>
+</section><details class="advanced-settings"><summary>高级连接选项</summary>
         <div class="node-options">
           <label v-if="has('跳过证书验证')"><input v-model="draft.跳过证书验证" type="checkbox" />跳过证书验证</label>
           <label v-if="has('随机路径')"><input v-model="draft.随机路径" type="checkbox" />随机伪装路径</label>
           <label v-if="has('启用0RTT')"><input v-model="draft.启用0RTT" type="checkbox" :disabled="ss || grpc" />启用 0-RTT (ed=2560)</label>
           <template v-if="has('TLS分片')"><label><input type="checkbox" :checked="draft.TLS分片 === 'Shadowrocket'" :disabled="noTLS" @change="fragment('Shadowrocket', $event)" />启用分片 (Shadowrocket)</label><label><input type="checkbox" :checked="draft.TLS分片 === 'Happ'" :disabled="noTLS" @change="fragment('Happ', $event)" />启用分片 (Happ)</label></template>
         </div>
+</details><section class="form-section ech-section">
+        <EchConfiguration :model="draft" :disabled="noTLS" :show-title="true" />
+        <p v-if="noTLS" class="hint">Shadowsocks 未启用 TLS，ECH 和 TLS 分片已关闭。</p>
         <div v-if="conflict" role="alert"><p>当前指纹 {{ draft.Fingerprint }} 不支持 ECH，请选择处理方式。</p><div class="actions"><button type="button" @click="resolve('chrome')">使用 Chrome 并启用 ECH</button><button type="button" @click="resolve('firefox')">使用 Firefox 并启用 ECH</button><button type="button" class="secondary" @click="resolve('disable')">关闭 ECH</button></div></div>
-      </fieldset>
-      <div class="actions"><button :disabled="busy || !changed">{{ busy ? '保存中…' : '保存设置' }}</button><button type="button" class="secondary" :disabled="busy || !changed" @click="cancel">取消修改</button></div>
+      </section></fieldset>
+      <div class="form-footer"><span class="form-status" :class="{ dirty: changed }">{{ changed ? '有未保存的修改' : '配置已同步' }}</span><div class="actions"><button :disabled="busy || !changed">{{ busy ? '保存中…' : '保存设置' }}</button><button type="button" class="secondary" :disabled="busy || !changed" @click="cancel">取消修改</button></div></div>
 
     </form>
     <Teleport to="body"><dialog ref="dialog" v-glass-dialog class="node-dialog glass-dialog">

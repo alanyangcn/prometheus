@@ -1,14 +1,21 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { tools } from '../server/api/tools';
 import { converterBaseURL, converterKey, saveVerifiedConverter } from '../src/features/tools/converter';
-import { normalizeIP, abuseScore, maskIP, locationMap } from '../src/features/tools/ip';
-import { proxyConfiguration, proxyIPConfiguration } from '../src/features/tools/proxies';
-import { probeNetwork, measureLatency, latencyLoop } from '../src/features/tools/network';
+import { normalizeIP, locationMap } from '../src/features/tools/ip';
 import { chainLine, parseChainInput } from '../src/features/tools/chain';
 const env = { STORAGE: { get: async () => null } };
 async function tool(action: string, data: unknown = {}, runtime: unknown = {}) { return tools(new Request(`https://example.com/api/tools/${action}`, { method: 'POST', body: JSON.stringify(data) }), env as any, runtime as any, {} as any); }
 afterEach(() => vi.unstubAllGlobals());
 describe('Controlled administration tools', () => {
+  it('retires public proxy discovery and remote path presets without contacting external services', async () => {
+    const request = vi.fn().mockResolvedValue(Response.json([]));
+    vi.stubGlobal('fetch', request);
+    for (const action of ['proxy-directory', 'proxyip-check', 'path-presets']) {
+      const response = await tool(action, { type: 'socks5', address: '203.0.113.1' });
+      expect(response!.status).toBe(404);
+    }
+    expect(request).not.toHaveBeenCalled();
+  });
   it('returns only current-request network metadata with no credentials', async () => { const request = new Request('https://example.com/api/tools/network-info', { method: 'POST', headers: { 'CF-Connecting-IP': '203.0.113.1', Cookie: 'private-cookie', Authorization: 'private-token' }, body: '{}' }); Object.defineProperty(request, 'cf', {value:{colo:'SIN',country:'SG',asOrganization:'Test ASN',httpProtocol:'HTTP/2',tlsVersion:'TLSv1.3',privateValue:'secret'}}); const response = await tools(request, env as any, {} as any, {} as any); const output = await response!.json() as any; expect(output.connectingIP).toBe('203.0.113.1'); expect(output.colo).toBe('SIN'); expect(output.httpProtocol).toBe('HTTP/2'); expect(JSON.stringify(output)).not.toMatch(/private|secret/); });
   it('creates exact ADD chain syntax and brackets IPv6', () => { expect(chainLine('example.com','443','test','socks5','socks5://user:pass@proxy:1080')).toBe('example.com:443#test$socks5://user:pass@proxy:1080'); expect(chainLine('2001:db8::1','','','http','proxy:80')).toBe('[2001:db8::1]#链式代理$http://proxy:80'); expect(() => chainLine('example.com','0','test','http','proxy:80')).toThrow(); });
   it('parses pasted proxy URL scheme and encoded name', () => { expect(parseChainInput('/http://user:pass@proxy:80#%E6%B5%8B%E8%AF%95','socks5')).toEqual({scheme:'http',address:'user:pass@proxy:80',name:'测试'}); });
@@ -18,19 +25,25 @@ describe('Controlled administration tools', () => {
 
 });
 
-describe('Reference directory, preset, IP and browser diagnostics workflows', () => {
-  it('normalizes fixed-source public directories and filters PROXYIP to TLS 443', async () => {
-    const request = vi.fn().mockResolvedValueOnce(Response.json([{proxy:'socks5://203.0.113.1:1080',country:'SG',country_cn:'新加坡',protocol:'socks5'}])).mockResolvedValueOnce(Response.json({data:[{ip:'2001:db8::1',port:[443,8443],meta:{country:'US',city:'Test'}},{ip:'203.0.113.2',port:80}]})); vi.stubGlobal('fetch',request);
-    const proxies = await (await tool('proxy-directory',{type:'socks5'}))!.json() as any[]; expect(proxies[0].address).toBe('socks5://203.0.113.1:1080'); expect(request.mock.calls[0][0]).toBe('https://raw.githubusercontent.com/EDT-Pages/Proxy-List/main/data/socks5.json');
-    const ips = await (await tool('proxy-directory',{type:'proxyip'}))!.json() as any[]; expect(ips).toHaveLength(1); expect(ips[0].address).toBe('2001:db8::1'); expect((await tool('proxy-directory',{type:'../private'}))!.status).toBe(400); expect(request).toHaveBeenCalledTimes(2);
+describe('IP details and converter presets', () => {
+  it('keeps converter presets while retiring path presets', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(Response.json([{label:'ACL',options:[{label:'Mini',value:'https://config.example/file?variant=mini'},{label:'invalid'}]}])));
+    expect(await (await tool('converter-presets'))!.json()).toEqual([{label:'ACL',options:[{label:'Mini',value:'https://config.example/file?variant=mini'}]}]);
   });
-  it('validates PROXYIP and returns independent IPv4/IPv6 results', async () => { vi.stubGlobal('fetch',vi.fn().mockResolvedValue(Response.json({success:true,responseTime:23,supports_ipv4:true,supports_ipv6:false,private:'omit'}))); const output = await (await tool('proxyip-check',{address:'2001:db8::1'}))!.json(); expect(output).toEqual({success:true,responseTime:23,supports_ipv4:true,supports_ipv6:false}); expect((await tool('proxyip-check',{address:'example.com?token=secret'}))!.status).toBe(400); });
-  it('normalizes reference path and converter preset schemas', async () => { const request = vi.fn().mockResolvedValueOnce(Response.json([{项目名:'CM',路径模板:{PROXYIP:'proxyip={{IP:PORT}}'},提示消息:'help'}])).mockResolvedValueOnce(Response.json([{label:'ACL',options:[{label:'Mini',value:'https://config.example/file?variant=mini'},{label:'invalid'}]}])); vi.stubGlobal('fetch',request); expect(await (await tool('path-presets'))!.json()).toEqual([{label:'CM',templates:{PROXYIP:'proxyip={{IP:PORT}}'},message:'help'}]); expect(await (await tool('converter-presets'))!.json()).toEqual([{label:'ACL',options:[{label:'Mini',value:'https://config.example/file?variant=mini'}]}]); });
-  it('preserves query-bearing config URLs', async () => { const request = vi.fn().mockResolvedValueOnce(new Response('subconverter v1')).mockResolvedValueOnce(new Response('[custom]')); vi.stubGlobal('fetch',request); expect((await tool('converter-check',{baseURL:'https://converter.example',config:'https://config.example/file?variant=mini'}))!.status).toBe(200); expect(String(request.mock.calls[1][0])).toContain('?variant=mini'); });
-  it('builds reference proxy configuration patches', () => { expect(proxyConfiguration('socks5','socks5://user:pass@proxy:1080',true)).toEqual({反代:{SOCKS5:{启用:'socks5',全局:true,账号:'user:pass@proxy:1080'}}}); expect(proxyIPConfiguration(['203.0.113.1','2001:db8::1','[2001:db8::2]:443','203.0.113.1'])).toEqual({反代:{PROXYIP:'203.0.113.1,2001:db8::1,[2001:db8::2]:443',SOCKS5:{启用:null,全局:false,账号:''}}}); });
-  it('normalizes geography, company, ASN and reference abuse score', () => { const info = normalizeIP({ip:'203.0.113.1',cc:'SG',city:'Singapore',asn_num:64500,asn_org:'Test',company_name:'Fixture',company_abuser_score:'.02',asn_abuser_score:'.04',is_proxy:true,is_bogon:true}); expect(info.location.country_code).toBe('SG'); expect(info.asn.org).toBe('Test'); expect(info.company.name).toBe('Fixture'); expect(abuseScore(info)).toBeCloseTo(1.3); expect(abuseScore(normalizeIP({ip:'203.0.113.1'}))).toBeNull(); expect(maskIP('203.0.113.1')).toBe('203.0.113.*'); expect(maskIP('2001:db8::1')).toContain('****'); });
-  it('measures browser trace/json sources and distinguishes actual IP versions', async () => { const controller = new AbortController(); const request = vi.fn().mockResolvedValueOnce(new Response('ip=203.0.113.1\nloc=SG\n')).mockResolvedValueOnce(Response.json({ip:'2001:db8::1',country:'US',org:'Fixture'})); let tick = 0; const now = () => tick += 7; const trace = await probeNetwork({name:'trace',group:'test',url:'https://trace.example',kind:'trace'},controller.signal,request as typeof fetch,now); expect(trace).toMatchObject({success:true,ip:'203.0.113.1',version:'v4',location:'SG',duration:7}); const ipv6 = await probeNetwork({name:'IPv6',group:'test',url:'https://v6.example',kind:'json'},controller.signal,request as typeof fetch,now); expect(ipv6).toMatchObject({success:true,version:'v6',location:'US Fixture'}); expect(request.mock.calls[0][1].credentials).toBe('omit'); });
-  it('records actual latency and cancels loops without further samples', async () => { const controller = new AbortController(); const request = vi.fn().mockResolvedValue(new Response('')); let tick = 0; expect(await measureLatency('https://latency.example',controller.signal,request as typeof fetch,() => tick += 9)).toBe(9); expect(request.mock.calls[0][1]).toMatchObject({method:'HEAD',mode:'no-cors',credentials:'omit'}); const samples: (number|null)[] = []; const measure = vi.fn().mockResolvedValue(15); await latencyLoop('https://latency.example',10,controller.signal,value => { samples.push(value); if (samples.length === 2) controller.abort(); },measure,0); expect(samples).toEqual([15,15]); expect(measure).toHaveBeenCalledTimes(2); });
+  it('preserves query-bearing converter config URLs', async () => {
+    const request = vi.fn().mockResolvedValueOnce(new Response('subconverter v1')).mockResolvedValueOnce(new Response('[custom]'));
+    vi.stubGlobal('fetch', request);
+    expect((await tool('converter-check',{baseURL:'https://converter.example',config:'https://config.example/file?variant=mini'}))!.status).toBe(200);
+    expect(String(request.mock.calls[1][0])).toContain('?variant=mini');
+  });
+  it('retains source IP flags and geography without inferring missing risk fields', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(Response.json({ip:'203.0.113.1',cc:'SG',asn_num:64500,asn_org:'Test',company_name:'Fixture',is_proxy:true})));
+    const response = await tool('ip-info', {ip:'203.0.113.1'});
+    expect(response!.status).toBe(200);
+    const info = await response!.json() as Record<string, unknown>;
+    expect(info).toMatchObject({ip:'203.0.113.1',is_proxy:true,location:{country_code:'SG'},asn:{org:'Test'},company:{name:'Fixture'}});
+    expect(info.is_abuser).toBeUndefined();
+  });
 });
 
 describe('Converter save snapshot and source compatibility', () => {
@@ -44,7 +57,6 @@ describe('Converter save snapshot and source compatibility', () => {
     }
     for (const badIP of ['::::', '...', '999.999.999.999', '127.0.0.1', '::1']) {
       expect((await tool('ip-info', { ip: badIP }))!.status).toBe(400);
-      expect((await tool('proxyip-check', { address: badIP }))!.status).toBe(400);
     }
     expect(fetcher).not.toHaveBeenCalled();
   });

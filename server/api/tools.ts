@@ -33,20 +33,6 @@ function isValidIP(value: string): boolean {
     return false;
   }
 }
-function isValidProxyIP(value: string): boolean {
-  if (isValidIP(value)) return true;
-  const bracketed = /^\[([^\]]+)\]:(\d{1,5})$/.exec(value);
-  if (bracketed) {
-    const port = Number(bracketed[2]);
-    return port >= 1 && port <= 65535 && isValidIP(bracketed[1]!);
-  }
-  const v4Port = /^(\d{1,3}(?:\.\d{1,3}){3}):(\d{1,5})$/.exec(value);
-  if (v4Port) {
-    const port = Number(v4Port[2]);
-    return port >= 1 && port <= 65535 && isValidIP(v4Port[1]!);
-  }
-  return false;
-}
 function https(value: unknown, allowHTTP = false): URL {
   if (typeof value !== 'string') throw new Error('需要 HTTPS 地址');
   const url = new URL(value.includes('://') ? value : `https://${value}`);
@@ -75,30 +61,11 @@ export async function tools(request: Request, env: WorkerEnv, runtime: TunnelRun
       const cf = request.cf || {};
       return reply({ connectingIP: request.headers.get('CF-Connecting-IP') || null, ...Object.fromEntries(['colo', 'country', 'city', 'region', 'asn', 'asOrganization', 'httpProtocol', 'tlsVersion'].map(key => [key, cf[key] ?? null])) });
     }
-    if (action === 'path-presets' || action === 'converter-presets') {
-      const source = action === 'path-presets' ? 'https://raw.githubusercontent.com/cmliu/cmliu/main/json/edt-path-config.json' : 'https://raw.githubusercontent.com/cmliu/cmliu/main/SUBCONFIG.json';
+    if (action === 'converter-presets') {
+      const source = 'https://raw.githubusercontent.com/cmliu/cmliu/main/SUBCONFIG.json';
       const value = await (await remote(source)).json() as unknown;
       if (!Array.isArray(value)) throw new Error('预设列表无效');
-      if (action === 'path-presets') return reply(value.filter(row => row && typeof row.项目名 === 'string' && row.路径模板 && typeof row.路径模板 === 'object').map(row => ({ label: row.项目名, templates: row.路径模板, ...(typeof row.提示消息 === 'string' ? { message: row.提示消息 } : {}) })));
       return reply(value.filter(row => row && typeof row.label === 'string' && Array.isArray(row.options)).map(row => ({ label: row.label, options: row.options.filter((option: Record<string, unknown>) => option && typeof option.label === 'string' && typeof option.value === 'string') })));
-    }
-    if (action === 'proxy-directory') {
-      if (!['socks5', 'http', 'https', 'proxyip'].includes(String(data.type))) throw new Error('代理目录类型无效');
-      const source = data.type === 'proxyip' ? 'https://zip.cm.edu.kg.cmliussss.net/all.json' : `https://raw.githubusercontent.com/EDT-Pages/Proxy-List/main/data/${data.type}.json`;
-      const value = await (await remote(source)).json() as unknown;
-      const rows = data.type === 'proxyip' && value && typeof value === 'object' && 'data' in value ? (value as {data: unknown}).data : value;
-      if (!Array.isArray(rows)) throw new Error('代理目录响应无效');
-      const entries = rows.filter(row => row && typeof row === 'object').filter(row => data.type !== 'proxyip' || (Array.isArray(row.port) ? row.port.includes(443) : row.port === 443)).map(row => {
-        const meta = data.type === 'proxyip' ? (row.meta || {}) : row;
-        return { address: String(data.type === 'proxyip' ? row.ip || '' : row.proxy || ''), country: String(meta.country || 'Unknown'), countryName: String(meta.country_cn || meta.country_en || meta.country || '未知'), city: String(meta.city || ''), asn: meta.asn || '', organization: String(meta.asOrganization || ''), protocol: String(row.protocol || data.type) };
-      }).filter(row => row.address.length > 0 && row.address.length < 4096 && !/[\r\n]/.test(row.address));
-      return reply(entries.slice(0, 20000));
-    }
-    if (action === 'proxyip-check') {
-      if (typeof data.address !== 'string' || !isValidProxyIP(data.address)) throw new Error('PROXYIP 地址无效');
-      const result = await (await remote(`https://api.090227.xyz/check?proxyip=${encodeURIComponent(data.address)}`)).json() as Record<string, unknown>;
-      if (typeof result.success !== 'boolean') throw new Error('PROXYIP 检测响应无效');
-      return reply({ success: result.success, responseTime: Number(result.responseTime) || null, supports_ipv4: result.supports_ipv4 === true, supports_ipv6: result.supports_ipv6 === true });
     }
     if (action === 'converter-list') {
       const list = await (await remote('https://raw.githubusercontent.com/cmliu/cmliu/main/SUBAPI.json')).json() as unknown;
