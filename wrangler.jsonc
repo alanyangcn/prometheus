@@ -10,21 +10,14 @@
     "binding": "ASSETS"
   },
   "observability": {
-    "enabled": false
+    "enabled": true
   },
-  "account_id": "ac7eeee2ac55f6e94433bc62aad2da53",
+  "account_id": "38230428abeeaf3dbe08223cfbf5f3fa",
   "keep_vars": true,
   "kv_namespaces": [
     {
       "binding": "STORAGE",
-      "id": "219f845bda1a403e96d2705baad24173"
-    }
-  ],
-  "routes": [
-    {
-      "pattern": "dance.zmjh.tech",
-      "zone_name": "zmjh.tech",
-      "custom_domain": true
+      "id": "7b1fcef07e01418999a395119048c775"
     }
   ],
   "workers_dev": true,
