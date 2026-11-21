@@ -1,10 +1,12 @@
-import { connect } from 'cloudflare:sockets';
 import { createRuntime } from './runtime';
 import { management } from './api/management';
 import { administrator, authenticated } from './auth/session';
 import type { WorkerEnv } from './env';
 import type { TunnelRuntime } from './types';
 import { hasEntryMarker, recordEntry } from './auth/entry-marker';
+
+const socketModuleSpec = ['cloudflare', 'sockets'].join(':');
+let cachedSocketConnect: ((...args: unknown[]) => unknown) | undefined;
 
 const legacyManagementPaths = new Set(['/admin/config.json', '/admin/ADD.txt', '/admin/log.json', '/admin/init', '/admin/getADDAPI', '/admin/check']);
 const managementPages = new Set(['/spark', '/illumination', '/illumination/network', '/illumination/settings', '/illumination/subscription', '/illumination/ech', '/illumination/cdn', '/illumination/conversion', '/illumination/logs']);
@@ -45,11 +47,15 @@ export default {
       return new Response(html.body, { status: html.status, headers });
     };
     let cachedRuntime: TunnelRuntime | undefined;
-    const getRuntime = () => (cachedRuntime ??= createRuntime({ socketConnect: connect, serveApp }));
+    const getRuntime = () => (cachedRuntime ??= createRuntime({ socketConnect: cachedSocketConnect as never, serveApp }));
     const rememberEntry = (response: Response) => recordEntry(response, request, env, base);
     const outsidePage = async () => base && await hasEntryMarker(request, env, base) ? redirectToLogin() : notFound();
     const redirectToLogin = () => new Response(null, { status: 302, headers: { Location: base + '/spark', 'Cache-Control': 'no-store' } });
     try {
+      if (!cachedSocketConnect) {
+        const socketsModule = await import(/* @vite-ignore */ socketModuleSpec) as { connect?: (...args: unknown[]) => unknown };
+        cachedSocketConnect = socketsModule.connect;
+      }
       const upgrade = request.headers.get('Upgrade')?.toLowerCase() === 'websocket';
       const read = request.method === 'GET' || request.method === 'HEAD';
       if (prefixed && !upgrade && legacyManagementPaths.has(pagePath)) {

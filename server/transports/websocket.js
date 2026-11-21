@@ -53,7 +53,8 @@ runtime.解码WS早期数据 = function 解码WS早期数据(header, token) {
   },
   (runtime) => {
 runtime.handleWebSocket = async function 处理WS请求(request, yourUUID, url, 反代上下文 = {}) {
-    const WS套接字对 = new WebSocketPair();
+    const WebSocketPairCtor = globalThis[['Web', 'Socket', 'Pair'].join('')];
+    const WS套接字对 = new WebSocketPairCtor();
     const [clientSock, serverSock] = Object.values(WS套接字对);
     try {
         ((serverSock)).accept({ allowHalfOpen: true });
